@@ -1,0 +1,11 @@
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully prints the dungeon for the game. There are at least
+six rooms with a max of 15 rooms for readability. There are between 1-5 up
+and down staircases each which can appear in rooms and corridors. The corridors are
+connected to eachother by using a modified depth first search algorithm that I
+wrote to find the shortest path to the room you are trying to connect to. dungeon.c
+has all of the source code while headers.h includes all of the prototypes for the
+functions. The dungeon has 6-15 randomly placed rooms that measure 4-15x3-15 units. 
+There is a border around the dungeon which is just immutable rock but is added for
+readability. 
