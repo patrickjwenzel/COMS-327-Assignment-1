@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <endian.h>
 
 type enum action{
 		 save_file,
@@ -22,23 +24,33 @@ int main(int argc, char *argv[]){
   action_t action;
   
   if(argc != 2){
+    
     fprintf(stderr, "Usage: Give thing");
     return -1;
   }
 
+  string path = getenv(3);
+
+  string filename = strcat(path, ".rlg327/dungeon");
+
+
+  
   if(!strcmp(argv[1], "--save")){
     action = save_file;
+    
+    
+    if(!(f = fopen(filename, "w"))){
+      fprintf(stderr, "Failed to open file for writing, you fool.");
+      return -1;
+    }
   }
 
   else if(!strcmp(argv[1], "--load")){
     action = load_file;
   }
     
-  
-  if(!(f = fopen("text_file", "w"))){
-    fprintf(stderr, "Failed to open file for writing");
-    return -1;
-  }
+  /*
+
 
   fprintf(f, "%d %d\n", s.i, s.j); 
 
@@ -53,6 +65,7 @@ int main(int argc, char *argv[]){
   fscanf(f, " %d %d\n", &s.i, &s.j);
   
   fclose(f);
-
+  */
   return 0;
+  
 }
