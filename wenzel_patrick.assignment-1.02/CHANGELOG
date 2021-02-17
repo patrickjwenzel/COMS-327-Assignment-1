@@ -1,0 +1,15 @@
+02-11-2021:
+    - PJW Created headers.h to clean up code
+    - PJW Added to create_dungeon_map() to place staircases and start the corridor placing process
+    - PJW Wrote shortest_path() to initialize the visited array and to start the corridor placing process
+    - PJW Wrote modified_DFS() to perform a modified depth first search to get from the origin room to the next room
+        - Performs a depth first search in the left and right direction while performing checks each time the function is called
+        - If room is straight up or down, just place corridors
+
+
+02-10-2021:
+    - PJW Wrote fill_dungeon() to fill the char array with *'s to know where non-dungeon places are
+    - PJW Wrote part of create_dungeon_map() to correctly place at least 6 rooms that are at least 4x3
+    - PJW Wrote print_dungeon() to print dungeon that also includes a border
+    - PJW Wrote newRoom() to create a new room struct and return that struct
+    - PJW Wrote is_room() to check if rooms would collide
