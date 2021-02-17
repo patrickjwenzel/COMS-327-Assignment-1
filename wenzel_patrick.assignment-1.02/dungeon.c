@@ -53,7 +53,6 @@ int main(int argc, char *argv[]){
 	    return -1;
 	}
 	if(argc == 1){
-        printf("Hello\n");
         fill_dungeon(dungeon_map, hardness_map);
         create_dungeon_map(dungeon_map, hardness_map);
         print_dungeon(dungeon_map);
