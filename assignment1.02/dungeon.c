@@ -35,10 +35,10 @@
 
 
 struct room{
-	uint_8 x_pos;
-	uint_8 y_pos;
-	uint_8 x_size;
-	uint_8 y_size;
+	uint_8 xPos;
+	uint_8 yPos;
+	uint_8 xSize;
+	uint_8 ySize;
 };
 
 int main(){
@@ -133,7 +133,7 @@ int loadDungeon(){
 
   fread(&size, 4, 1, file);
   size = be32toh(size);
-  fread(&player->x_pos, 1, 1, file);                            // redo
+  fread(&player->xPos, 1, 1, file);                            // redo
   fread(&player->y_pos, 1, 1, file);                            // redo
   fread(hardness, 1, 1680, file);
   fread(numRooms, 2, 1, file);
@@ -141,10 +141,10 @@ int loadDungeon(){
   roomArray = malloc(*numRooms * sizeof(room_t));                // redo
 
   for(i = 0; i<*numROoms; i++){
-    fread(&room_array[i].x_pos, sizeof(room_array[i].x_pos), 1, file);
-    fread(&room_array[i].y_pos, sizeof(room_array[i].y_pos), 1, file);
-    fread(&room_array[i].x_size, sizeof(room_array[i].x_size), 1, file);
-    fread(&room_array[i].y_size, sizeof(room_array[i].y_size), 1, file);
+    fread(&room_array[i].xPos, sizeof(room_array[i].xPos), 1, file);
+    fread(&room_array[i].yPos, sizeof(room_array[i].yPos), 1, file);
+    fread(&room_array[i].xSize, sizeof(room_array[i].xSize), 1, file);
+    fread(&room_array[i].ySize, sizeof(room_array[i].ySize), 1, file);
   }
 
   fread(&numStairs[0],2,1,file);
@@ -152,8 +152,8 @@ int loadDungeon(){
   upStairs = malloc(numStairs[0] * sizeof(up_t));
 
   for(i = 0; i<numStairs[0]; i++){
-    fread(&upStairs[i].x_pos, sizeof(upStairs[i].x_pos), 1, file);
-    fread(&upStairs[i].y_pos, sizeof(upStairs[i].y_pos), 1, file);
+    fread(&upStairs[i].xPos, sizeof(upStairs[i].xPos), 1, file);
+    fread(&upStairs[i].yPos, sizeof(upStairs[i].yPos), 1, file);
   }
 
   fread(&numStairs[1],2,1,file);
@@ -161,8 +161,8 @@ int loadDungeon(){
   downStairs = malloc(numStairs[1] * sizeof(up_t));
 
   for(i = 0; i<numStairs[1]; i++){
-    fread(&downStairs[i].x_pos, sizeof(downStairs[i].x_pos), 1, file);
-    fread(&downStairs[i].y_pos, sizeof(downStairs[i].y_pos), 1, file);
+    fread(&downStairs[i].xPos, sizeof(downStairs[i].xPos), 1, file);
+    fread(&downStairs[i].yPos, sizeof(downStairs[i].yPos), 1, file);
   }
   
   
@@ -192,8 +192,8 @@ int loadDungeon(){
   }
 
   for(k = 0; k<numRooms; k++){
-    for(i=roomArray[k].x_pos; i<roomAraay[k].x_pos+roomArray[k].x_size; i++){
-      for(j=roomArray[k].y_pos; j<roomAraay[k].y_pos+roomArray[k].y_size; j++){
+    for(i=roomArray[k].xPos; i<roomAraay[k].xPos+roomArray[k].xSize; i++){
+      for(j=roomArray[k].yPos; j<roomAraay[k].yPos+roomArray[k].ySize; j++){
       //   roomArra
 	dungeon[j][i] = '.';
       }
@@ -203,11 +203,11 @@ int loadDungeon(){
 
 
   for(i = 0; i<numUp; i++){
-    dungeon[up_staircases[i].y_pos][up_staircases[i].x_pos] = '<';
+    dungeon[up_staircases[i].yPos][up_staircases[i].xPos] = '<';
   }
 
   for(i =0; i<numDown; i++){
-     dungeon[down_staircases[i].y_pos][down_staircases[i].x_pos] = '>';
+     dungeon[down_staircases[i].yPos][down_staircases[i].xPos] = '>';
   }
 }
   
