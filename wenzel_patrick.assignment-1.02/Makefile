@@ -4,7 +4,7 @@ build:
 run: dungeon.o
 	./dungeon.o
 
-load: dungeon.o
+load: dungeon
 	./dungeon.o --load
 
 save: dungeon.o
