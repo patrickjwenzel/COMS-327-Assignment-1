@@ -35,10 +35,10 @@
 
 
 struct room{
-	int x_pos;
-	int y_pos;
-	int x_size;
-	int y_size;
+	uint_8 x_pos;
+	uint_8 y_pos;
+	uint_8 x_size;
+	uint_8 y_size;
 };
 
 int main(){
@@ -58,12 +58,25 @@ int main(){
 	      
 
 
-  if(LOAD_FILE){
-
-  }
+ 
   char dungeon_map[MAP_X_MAX][MAP_Y_MAX];
-  fill_dungeon(dungeon_map);
-  create_dungeon_map(dungeon_map);
+  uint_8 hardnessMap[MAP_X_MAX][MAP_Y_MAX];
+  
+  int numRooms = (rand() % (15 - 6 + 1)) + 6; //Generates between 6-15 rooms
+  int numUp = (rand() % 5) + 1; //Will place 1-5 up staircases
+  int numDown = (rand() % 5) + 1; //Will place 1-5 down stair cases
+  int i, j, k = 0, x, y, rxPos, roomyPos, numrPlaced = 0, numCycles = 0, numUp = 0, numDown = 0;
+  int rooms[num_rooms][2];
+
+  
+  if(LOAD_FILE){
+    loadDungeon(dungeonMap, hardnessMap, numRooms);
+  }
+  else{
+    struct room room_array[numRooms];
+    fill_dungeon(dungeon_map);
+    create_dungeon_map(dungeon_map);
+  }
   print_dungeon(dungeon_map);
 
   if(SAVE_FILE){
@@ -95,13 +108,119 @@ int saveDungeon(){
 
 }
 
+
+int loadDungeon(){
+  FILE *file;
+  int i;
+  int version;
+  int size;
+  char header[12];
+  
+  char*home = gentenv("HOME");
+  char *gam_dir = ".rlg327";
+  char *save_file = "dungeon";
+  char *path = malloc((strlen(home)+strlen(game_dir)+strlen(save_file)+3)*sizeof(char));
+
+  sprintf(path, "%s/%s/%s", home, game_dir, save_file);
+
+  if(!(fopen(path, "r"))){
+    fprintf(stderr, "Failed to open file for saving");
+    return -1;
+  }
+  fread(&header, sizeof(header), 1, file);
+  fread(&version, 4, 1, file);
+  version = be32toh(version);
+
+  fread(&size, 4, 1, file);
+  size = be32toh(size);
+  fread(&player->x_pos, 1, 1, file);                            // redo
+  fread(&player->y_pos, 1, 1, file);                            // redo
+  fread(hardness, 1, 1680, file);
+  fread(numRooms, 2, 1, file);
+  *numRooms = be16toh(*numRooms);
+  roomArray = malloc(*numRooms * sizeof(room_t));                // redo
+
+  for(i = 0; i<*numROoms; i++){
+    fread(&room_array[i].x_pos, sizeof(room_array[i].x_pos), 1, file);
+    fread(&room_array[i].y_pos, sizeof(room_array[i].y_pos), 1, file);
+    fread(&room_array[i].x_size, sizeof(room_array[i].x_size), 1, file);
+    fread(&room_array[i].y_size, sizeof(room_array[i].y_size), 1, file);
+  }
+
+  fread(&numStairs[0],2,1,file);
+  numStairs[0] = be16toh(num_stairs_placed[0]);
+  upStairs = malloc(numStairs[0] * sizeof(up_t));
+
+  for(i = 0; i<numStairs[0]; i++){
+    fread(&upStairs[i].x_pos, sizeof(upStairs[i].x_pos), 1, file);
+    fread(&upStairs[i].y_pos, sizeof(upStairs[i].y_pos), 1, file);
+  }
+
+  fread(&numStairs[1],2,1,file);
+  numStairs[1] = be16toh(num_stairs_placed[0]);
+  downStairs = malloc(numStairs[1] * sizeof(up_t));
+
+  for(i = 0; i<numStairs[1]; i++){
+    fread(&downStairs[i].x_pos, sizeof(downStairs[i].x_pos), 1, file);
+    fread(&downStairs[i].y_pos, sizeof(downStairs[i].y_pos), 1, file);
+  }
+  
+  
+  
+  fclose(file);
+
+
+  for(i = 0; i<MAP_X_MAX; i++){
+    for(j = 0; j<MAP_Y_MAX; j++){
+      if(hardness[j][i] == 255){
+	if(j == 0 || j == MAP_Y_MAX-1){
+	  dungeon[j][i] = '-';
+	}
+	else{
+	  dungeon[j][i] = '|';
+	}
+	  
+      }
+
+      else if(!hardness[j][i]){
+	  dungeon[j][i] ='#';
+      }
+      else{
+	dungeon[j][i] = ' ';	
+      }
+    }
+  }
+
+  for(k = 0; k<numRooms; k++){
+    for(i=roomArray[k].x_pos; i<roomAraay[k].x_pos+roomArray[k].x_size; i++){
+      for(j=roomArray[k].y_pos; j<roomAraay[k].y_pos+roomArray[k].y_size; j++){
+      //   roomArra
+	dungeon[j][i] = '.';
+      }
+    }
+  }
+
+
+
+  for(i = 0; i<numUp; i++){
+    dungeon[up_staircases[i].y_pos][up_staircases[i].x_pos] = '<';
+  }
+
+  for(i =0; i<numDown; i++){
+     dungeon[down_staircases[i].y_pos][down_staircases[i].x_pos] = '>';
+  }
+}
+  
+
+
+/*
+ * Need to change up create to take random and num rooms beforehand 
+
+ *
+ */
+
 void create_dungeon_map(char dungeon[MAP_X_MAX][MAP_Y_MAX]) {
-	int num_rooms = (rand() % (15 - 6 + 1)) + 6; //Generates between 6-15 rooms
-	int num_up = (rand() % 5) + 1; //Will place 1-5 up staircases
-	int num_down = (rand() % 5) + 1; //Will place 1-5 down stair cases
-	int i, j = 0, x, y, room_x_pos, room_y_pos, num_rooms_placed = 0, num_cycles = 0, num_up_placed = 0, num_down_placed = 0;
-	int rooms[num_rooms][2];
-	struct room room_array[num_rooms];
+
 
   	while(num_cycles < num_rooms || num_rooms_placed < num_rooms){ //Will loop until all rooms have been placed
   		for(i = 0; i < num_rooms; i++){
