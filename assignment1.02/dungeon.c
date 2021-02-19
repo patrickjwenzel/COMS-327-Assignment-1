@@ -34,18 +34,34 @@
 #define SAVE_FILE 0
 
 
-struct room{
+typedef struct room{
 	uint_8 xPos;
 	uint_8 yPos;
 	uint_8 xSize;
 	uint_8 ySize;
-};
+} room_t;
+typedef struct upStair{
+  uint8_t xPos;
+  uint8_t yPos;
+} up_t;
+typedef struct downStair{
+  uint8_t xPos;
+  uint8_t yPos;
+} down_t;
+typedef struct player{
+  unit8_t xPos;
+  unit8_t yPos;
+
+} player_t;
+
 
 int main(){
   srand(time(NULL));
   int i;
 
 
+  
+  
   for(i = 0; i<argc; i++){
     if(!(strcmp(argv[i], "--s"))){
       SAVE_FILE = 1;
@@ -65,6 +81,11 @@ int main(){
   int numRooms = (rand() % (15 - 6 + 1)) + 6; //Generates between 6-15 rooms
   int numUp = (rand() % 5) + 1; //Will place 1-5 up staircases
   int numDown = (rand() % 5) + 1; //Will place 1-5 down stair cases
+  up_t upStairs[numUp];
+  down_t downStairs[numDown];
+  room_t room_array[num_rooms];
+  player_t player;
+  
   int i, j, k = 0, x, y, rxPos, roomyPos, numrPlaced = 0, numCycles = 0, numUp = 0, numDown = 0;
   int rooms[num_rooms][2];
 
@@ -109,7 +130,7 @@ int saveDungeon(){
 }
 
 
-int loadDungeon(){
+int loadDungeon(char dungeon[MAP_X_MAX][MAP_Y_MAX], uint8_t hardness[MAP_X_MAX][MAP_Y_MAX], int *numRooms, in numStairs[2], room_t room_array[], up_t upStairs[], down_t downStairs, int player[1][2]){
   FILE *file;
   int i;
   int version;
@@ -174,28 +195,28 @@ int loadDungeon(){
     for(j = 0; j<MAP_Y_MAX; j++){
       if(hardness[j][i] == 255){
 	if(j == 0 || j == MAP_Y_MAX-1){
-	  dungeon[j][i] = '-';
+	  dungeon[i][j] = '-';
 	}
 	else{
-	  dungeon[j][i] = '|';
+	  dungeon[i][j] = '|';
 	}
 	  
       }
 
       else if(!hardness[j][i]){
-	  dungeon[j][i] ='#';
+	  dungeon[i][j] ='#';
       }
       else{
-	dungeon[j][i] = ' ';	
+	dungeon[i][j] = ' ';	
       }
     }
   }
 
   for(k = 0; k<numRooms; k++){
-    for(i=roomArray[k].xPos; i<roomAraay[k].xPos+roomArray[k].xSize; i++){
-      for(j=roomArray[k].yPos; j<roomAraay[k].yPos+roomArray[k].ySize; j++){
+    for(i=roomArray[k].xPos; i<roomArray[k].xPos+roomArray[k].xSize; i++){
+      for(j=roomArray[k].yPos; j<roomArray[k].yPos+roomArray[k].ySize; j++){
       //   roomArra
-	dungeon[j][i] = '.';
+	dungeon[i][j] = '.';
       }
     }
   }
@@ -203,12 +224,14 @@ int loadDungeon(){
 
 
   for(i = 0; i<numUp; i++){
-    dungeon[up_staircases[i].yPos][up_staircases[i].xPos] = '<';
+    dungeon[up_staircases[i].xPos][up_staircases[i].yPos] = '<';
   }
 
   for(i =0; i<numDown; i++){
-     dungeon[down_staircases[i].yPos][down_staircases[i].xPos] = '>';
+     dungeon[down_staircases[i].xPos][down_staircases[i].yPos] = '>';
   }
+
+  dungeon[player[0][0]][player[0][1]] = '@';
 }
   
 
