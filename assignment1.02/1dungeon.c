@@ -15,25 +15,25 @@
 
 
 typedef struct up_staircase{ //Up staircase
-    uint8_t xPos;
-    uint8_t yPos;
+    u_int8_t xPos;
+    u_int8_t yPos;
 } up_t;
 
 typedef struct down_staircase{ //Down Staircase
-    uint8_t xPos;
-    uint8_t yPos;
+    u_int8_t xPos;
+    u_int8_t yPos;
 } down_t;
 
 typedef struct room{ //Room
-	uint8_t xPos;
-    uint8_t yPos;
-    uint8_t xSize;
-    uint8_t ySize;
+	u_int8_t xPos;
+    u_int8_t yPos;
+    u_int8_t xSize;
+    u_int8_t ySize;
 } room_t;
 
 typedef struct player{ //Player character
-    uint8_t xPos;
-    uint8_t yPos;
+    u_int8_t xPos;
+    u_int8_t yPos;
 } player_t;
 
 #include "headers.h"
@@ -41,7 +41,7 @@ typedef struct player{ //Player character
 int main(int argc, char *argv[]){
 	srand(time(NULL));
 	char dungeon_map[MAP_Y_MAX][MAP_X_MAX];
-	uint8_t hardness_map[MAP_Y_MAX][MAP_X_MAX];
+	u_int8_t hardness_map[MAP_Y_MAX][MAP_X_MAX];
     int numRooms = (rand() % (15 - 6 + 1)) + 6; //Generates between 6-15 rooms
     int numUp = (rand() % 5) + 1; //Will place 1-5 up staircases
     int numDown = (rand() % 5) + 1; //Will place 1-5 down stair cases
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void create_dungeon_map(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int numRooms, int numUp, int numDown, int numStairs[2], int rooms[][2], room_t room_array[], up_t up_stairs[], down_t down_stairs[], player_t *player, int save, int bool) {
+void create_dungeon_map(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], int numRooms, int numUp, int numDown, int numStairs[2], int rooms[][2], room_t room_array[], up_t up_stairs[], down_t down_stairs[], player_t *player, int save, int bool) {
 	int i, j = 0, x, y, room_xPos, room_yPos, numRooms_placed = 0, num_cycles = 0, player_placed = 0;
 	if(!bool){
         while(num_cycles < numRooms || numRooms_placed < numRooms){ //Will loop until all rooms have been placed
@@ -158,7 +158,7 @@ void create_dungeon_map(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP
 	return;
 }
 
-void fill_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX]){
+void fill_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX]){
 	int j, i;
 	for(j = 0; j < MAP_Y_MAX; j++){ //Fill the dungeon with ' 's and line borders with | or -. Make border hardness 255 and other hardness between 1-254
 		for(i = 0; i < MAP_X_MAX; i++){
@@ -197,7 +197,7 @@ int is_room(char dungeon[MAP_Y_MAX][MAP_X_MAX], int room_xPos, int room_yPos, in
 	return 0;
 }
 
-void shortest_path(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int src_x, int src_y, int dest_x, int dest_y, int numUp, up_t up_stairs[], int numDown, down_t downstairs[], int numStairs[]){ //Start of the shortest path print for the corridor
+void shortest_path(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], int src_x, int src_y, int dest_x, int dest_y, int numUp, up_t up_stairs[], int numDown, down_t downstairs[], int numStairs[]){ //Start of the shortest path print for the corridor
 	int i;
 	int visited[MAP_X_MAX];
 	for(i = 0; i < MAP_X_MAX; i++){ //Set visited array to all false
@@ -210,7 +210,7 @@ void shortest_path(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MA
 /*
 Modified version of a Depth First Search to get the shortest path from one room to the next
 */
-void modified_dfs(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int src_x, int src_y, int dest_x, int dest_y, int visited[MAP_X_MAX], int numUp, up_t up_stairs[], int numDown, down_t downstairs[], int numStairs[]){
+void modified_dfs(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], int src_x, int src_y, int dest_x, int dest_y, int visited[MAP_X_MAX], int numUp, up_t up_stairs[], int numDown, down_t downstairs[], int numStairs[]){
 	int i;
 	visited[src_x] = 1; //Set this coordinate to visited
 	if(src_x - dest_x < 0){//Destination is to the right
@@ -336,7 +336,7 @@ void modified_dfs(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX
 	else return;
 }
 
-void save_game(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int numRooms, int numStairs[], up_t up_stairs[], down_t down_stairs[], room_t rooms[]){
+void save_game(u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int numRooms, int numStairs[], up_t up_stairs[], down_t down_stairs[], room_t rooms[]){
     int i;
     char *home = getenv("HOME");
     char *game_dir = ".rlg327";
@@ -395,7 +395,7 @@ void save_game(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int numR
 	fclose(file);
 }
 
-void load_game(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int *numRooms, int numStairs[2], room_t room_array[], up_t up_stairs[], down_t down_stairs[], player_t *player){
+void load_game(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], int *numRooms, int numStairs[2], room_t room_array[], up_t up_stairs[], down_t down_stairs[], player_t *player){
     FILE *file;
     int i, version, size;
     char header[12];
@@ -500,7 +500,7 @@ void load_game(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][M
     dungeon[player.yPos][player.xPos] = '@';
 }
 
-void make_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t rooms[], int numRooms, up_t up_staircases[], int numUp, down_t down_staircases[], int numDown){
+void make_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t rooms[], int numRooms, up_t up_staircases[], int numUp, down_t down_staircases[], int numDown){
     int j, i, index;
     for(j = 0; j < MAP_Y_MAX; j++){
         for(i = 0; i < MAP_X_MAX; i++){
