@@ -13,3 +13,5 @@ char find_stairs(up_t up_staircases[], int num_up, down_t down_staircases[], int
 static int32_t corridor_path_cmp(const void *key, const void *with);
 static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling);
 void print_path_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling);
+int is_connected(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], uint8_t visited[MAP_Y_MAX][MAP_X_MAX], int src_y, int src_x, player_t player);
+void reset_visited(uint8_t visited[MAP_Y_MAX][MAP_X_MAX]);

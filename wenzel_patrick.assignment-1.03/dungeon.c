@@ -454,7 +454,7 @@ void load_game(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][M
 
     char *home = getenv("HOME");
     char *game_dir = ".rlg327";
-    char *game_file = DUNGEON; //WELL_DONE HELLO DUNGEON ADVENTURE;
+    char *game_file = ADVENTURE; //WELL_DONE HELLO DUNGEON ADVENTURE;
 
     char *path = malloc((strlen(home) + strlen(game_dir) + strlen(game_file) + 2 + 1) * sizeof(char));
     sprintf(path, "%s/%s/%s", home, game_dir, game_file);
@@ -606,6 +606,7 @@ static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardn
     heap_t heap;
     uint32_t x, y;
     int weight;
+    uint8_t visited[MAP_Y_MAX][MAP_X_MAX];
     // pos[0] = y, pos[1] = x
     if(!init){
         for(y = 0; y < MAP_Y_MAX; y++){
@@ -643,7 +644,8 @@ static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardn
              * If not a tunneling monster, only add to the heap if it is a corridor, room, or staircase
              */
             else{
-                path[y][x].heap_node = hardness[y][x] == 0 ? heap_insert(&heap, &path[y][x]) : NULL;
+                reset_visited(visited);
+                path[y][x].heap_node = hardness[y][x] == 0 && is_connected(hardness, visited, y, x, player) ? heap_insert(&heap, &path[y][x]) : NULL;
             }
         }
     }
@@ -701,4 +703,47 @@ static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardn
                 heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1] + 1].heap_node);
         }
     }
+}
+
+void reset_visited(uint8_t visited[MAP_Y_MAX][MAP_X_MAX]){
+    int y, x;
+    for(y = 0; y < MAP_Y_MAX; y++){
+        for(x = 0; x < MAP_X_MAX; x++){
+            visited[y][x] = 0;
+        }
+    }
+}
+
+int is_connected(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], uint8_t visited[MAP_Y_MAX][MAP_X_MAX], int src_y, int src_x, player_t player){
+    if(src_x == player.x_pos && src_y == player.y_pos){
+        return 1;
+    }
+    else{
+        visited[src_y][src_x] = 1;
+        if((src_y - 1 > 0) && !hardness[src_y - 1][src_x] && !visited[src_y - 1][src_x]){
+            is_connected(hardness, visited, src_y - 1, src_x, player);
+        }
+        if((src_y - 1 > 0) && (src_x - 1 > 0 )&& !hardness[src_y - 1][src_x - 1] && !visited[src_y - 1][src_x - 1]){
+            is_connected(hardness, visited, src_y - 1, src_x - 1, player);
+        }
+        if((src_y - 1 > 0) && (src_x + 1 < MAP_X_MAX - 1) && !hardness[src_y - 1][src_x + 1] && !visited[src_y - 1][src_x + 1]){
+            is_connected(hardness, visited, src_y - 1, src_x + 1, player);
+        }
+        if((src_x - 1 > 0) && !hardness[src_y][src_x - 1] && !visited[src_y][src_x - 1]){
+            is_connected(hardness, visited, src_y, src_x - 1, player);
+        }
+        if((src_x + 1 < MAP_X_MAX - 1) && !hardness[src_y][src_x + 1] && !visited[src_y][src_x + 1]){
+            is_connected(hardness, visited, src_y, src_x + 1, player);
+        }
+        if((src_y + 1 < MAP_Y_MAX - 1) && !hardness[src_y + 1][src_x] && !visited[src_y + 1][src_x]){
+            is_connected(hardness, visited, src_y + 1, src_x, player);
+        }
+        if((src_x - 1 > 0) && (src_y + 1 < MAP_Y_MAX - 1) && !hardness[src_y + 1][src_x - 1] && !visited[src_y + 1][src_x - 1]){
+            is_connected(hardness, visited, src_y + 1, src_x - 1, player);
+        }
+        if((src_y + 1 < MAP_Y_MAX - 1) && (src_x + 1 < MAP_X_MAX - 1) && !hardness[src_y + 1][src_x + 1] && !visited[src_y + 1][src_x + 1]){
+            is_connected(hardness, visited, src_y + 1, src_x + 1, player);
+        }
+    }
+    return 0;
 }
