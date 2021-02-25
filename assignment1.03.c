@@ -224,6 +224,331 @@ static void dijkstra_corridor(dungeon_t *d, pair_t from, pair_t to)
   }
 }
 
+
+///// This is for the dijkstra monster path (non tunneling)
+/*
+ * We need a corridor_path mirror for this 
+ * 
+ * 
+ */
+static void dijkstra_non_tunneling(dungeon_t *d)
+{
+	
+	int distanceMap[DUNGEON_Y][DUNGEON_X];
+  static corridor_path_t path[DUNGEON_Y][DUNGEON_X], *p; // change this from corridor compare
+  static uint32_t initialized = 0;
+  heap_t h;
+  uint32_t x, y;
+  int weight = 1+ (hardnesspair(p->pos)/85));
+  
+
+  if (!initialized) {
+    for (y = 0; y < DUNGEON_Y; y++) {
+      for (x = 0; x < DUNGEON_X; x++) {
+        path[y][x].pos[dim_y] = y;
+        path[y][x].pos[dim_x] = x;
+      }
+    }
+    initialized = 1;
+  }
+  
+  for (y = 0; y < DUNGEON_Y; y++) {
+    for (x = 0; x < DUNGEON_X; x++) {
+      path[y][x].cost = INT_MAX;
+    }
+  }
+
+  path[pc[dim_y]][pc[dim_x]].cost = 0; 
+
+  heap_init(&h, corridor_path_cmp, NULL); // change this from the corridor compare. do I need to?
+
+  for (y = 0; y < DUNGEON_Y; y++) {
+    for (x = 0; x < DUNGEON_X; x++) {
+      if (mapxy(x, y) == ter_floor) {							//this is a debug check: Is it ter_floor?
+        path[y][x].hn = heap_insert(&h, &path[y][x]);
+      } else {
+        path[y][x].hn = NULL;
+      }
+    }
+  }
+
+  while ((p = heap_remove_min(&h))) {
+    p->hn = NULL;
+
+    if ((path[p->pos[dim_y] - 1][p->pos[dim_x]    ].hn) &&
+        (path[p->pos[dim_y] - 1][p->pos[dim_x]    ].cost >
+         p->cost + weight)) {
+      path[p->pos[dim_y] - 1][p->pos[dim_x]    ].cost =
+        p->cost + weight;
+   //   path[p->pos[dim_y] - 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y] - 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+                                           [p->pos[dim_x]    ].hn);
+    }
+    if ((path[p->pos[dim_y]    ][p->pos[dim_x] - 1].hn) &&
+        (path[p->pos[dim_y]    ][p->pos[dim_x] - 1].cost >
+         p->cost + weight)) {
+      path[p->pos[dim_y]    ][p->pos[dim_x] - 1].cost =
+        p->cost + weight;
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] - 1].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] - 1].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y]    ]
+                                           [p->pos[dim_x] - 1].hn);
+    }
+    if ((path[p->pos[dim_y]    ][p->pos[dim_x] + 1].hn) &&
+        (path[p->pos[dim_y]    ][p->pos[dim_x] + 1].cost >
+         p->cost + weight)) {
+      path[p->pos[dim_y]    ][p->pos[dim_x] + 1].cost =
+        p->cost + weight;
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] + 1].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] + 1].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y]    ]
+                                           [p->pos[dim_x] + 1].hn);
+    }
+    if ((path[p->pos[dim_y] + 1][p->pos[dim_x]    ].hn) &&
+        (path[p->pos[dim_y] + 1][p->pos[dim_x]    ].cost >
+         p->cost + weight)) {
+      path[p->pos[dim_y] + 1][p->pos[dim_x]    ].cost =
+        p->cost + weight;
+     // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+     // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+                                           [p->pos[dim_x]    ].hn);
+    }
+	if ((path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].hn) &&
+		(path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].cost >
+		 p->cost + weight)) {
+		path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].cost =
+		  p->cost + weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+									   [p->pos[dim_x]  +1 ].hn);
+	}
+	if ((path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].hn) &&
+		(path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].cost >
+		 p->cost + weight)) {
+		path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].cost =
+		  p->cost + weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+									   [p->pos[dim_x]  +1 ].hn);
+	}
+	
+	if ((path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].hn) &&
+		(path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].cost >
+		 p->cost + weight)) {
+		path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].cost =
+		  p->cost +weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+									   [p->pos[dim_x]  -1 ].hn);
+	}
+	
+	if ((path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].hn) &&
+		(path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].cost >
+		 p->cost + weight)) {
+		path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].cost =
+		  p->cost + weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+									   [p->pos[dim_x]  -1 ].hn);
+	}
+			
+    
+    //add four more cases for the diagonal directions for the if statements
+  }
+  
+  // 2d nested loop to update costs, take it out of here and store it in my distance map. Do I need to make a distance map?
+  for(int j = 0; j<DUNGEON_Y; j++){				// this is the copy statement
+	  for(int i = 0; i<DUNGEON_X; i++){
+		  if(path[j][i].cost){
+			  distanceMap[j][i] = path[j][i].cost
+		  }
+		  else{
+			  distanceMap[j][i] = NULL;
+		  }
+	  } 
+  }
+  
+  
+  
+  for(int j = 0; j<DUNGEON_Y; j++){				// this is the print statement
+	  for(int i = 0; i<DUNGEON_X; i++){
+		  if(path[j][i].cost!=NULL){
+			  printf("%d", distanceMap[j][i]%10 );
+		  }
+		  else{
+			  printf(" ");
+		  } 
+		  
+		  
+	  }
+	  printf("\n");
+	  
+	  
+  }
+  
+}
+
+
+static void dijkstra_tunneling(dungeon_t *d)
+{
+	int distanceMap[DUNGEON_Y][DUNGEON_X];
+
+  static corridor_path_t path[DUNGEON_Y][DUNGEON_X], *p; // change this from corridor compare
+  static uint32_t initialized = 0;
+  heap_t h;
+  uint32_t x, y;
+  int weight = 1+ (hardnesspair(p->pos)/85));
+
+  if (!initialized) {
+    for (y = 0; y < DUNGEON_Y; y++) {
+      for (x = 0; x < DUNGEON_X; x++) {
+        path[y][x].pos[dim_y] = y;
+        path[y][x].pos[dim_x] = x;
+      }
+    }
+    initialized = 1;
+  }
+  
+  for (y = 0; y < DUNGEON_Y; y++) {
+    for (x = 0; x < DUNGEON_X; x++) {
+      path[y][x].cost = INT_MAX;
+    }
+  }
+
+  path[pc[dim_y]][pc[dim_x]].cost = 0; 
+
+  heap_init(&h, corridor_path_cmp, NULL); // change this from the corridor compare
+
+  for (y = 0; y < DUNGEON_Y; y++) {
+    for (x = 0; x < DUNGEON_X; x++) {
+      if (mapxy(x, y) != ter_wall_immutable) {				// this should be correct
+        path[y][x].hn = heap_insert(&h, &path[y][x]);
+      } else {
+        path[y][x].hn = NULL;
+      }
+    }
+  }
+
+  while ((p = heap_remove_min(&h))) {
+    p->hn = NULL;
+
+    if ((path[p->pos[dim_y] - 1][p->pos[dim_x]    ].hn) &&
+        (path[p->pos[dim_y] - 1][p->pos[dim_x]    ].cost >
+         p->cost +weight)) {
+      path[p->pos[dim_y] - 1][p->pos[dim_x]    ].cost =
+        p->cost +weight;											// is this theoretically correct? What do I do with the hardness value?
+   //   path[p->pos[dim_y] - 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y] - 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+                                           [p->pos[dim_x]    ].hn);
+    }
+    if ((path[p->pos[dim_y]    ][p->pos[dim_x] - 1].hn) &&
+        (path[p->pos[dim_y]    ][p->pos[dim_x] - 1].cost >
+         p->cost +weight)) {
+      path[p->pos[dim_y]    ][p->pos[dim_x] - 1].cost =
+        p->cost +weight;
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] - 1].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] - 1].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y]    ]
+                                           [p->pos[dim_x] - 1].hn);
+    }
+    if ((path[p->pos[dim_y]    ][p->pos[dim_x] + 1].hn) &&
+        (path[p->pos[dim_y]    ][p->pos[dim_x] + 1].cost >
+         p->cost +weight)) {
+      path[p->pos[dim_y]    ][p->pos[dim_x] + 1].cost =
+        p->cost +weight;
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] + 1].from[dim_y] = p->pos[dim_y];
+    //  path[p->pos[dim_y]    ][p->pos[dim_x] + 1].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y]    ]
+                                           [p->pos[dim_x] + 1].hn);
+    }
+    if ((path[p->pos[dim_y] + 1][p->pos[dim_x]    ].hn) &&
+        (path[p->pos[dim_y] + 1][p->pos[dim_x]    ].cost >
+         p->cost +weight)) {
+      path[p->pos[dim_y] + 1][p->pos[dim_x]    ].cost =
+        p->cost +weight;
+     // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+     // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+      heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+                                           [p->pos[dim_x]    ].hn);
+    }
+	if ((path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].hn) &&
+		(path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].cost >
+		 p->cost +weight)) {
+		path[p->pos[dim_y] + 1][p->pos[dim_x] +1 ].cost =
+		  p->cost +weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+									   [p->pos[dim_x]  +1 ].hn);
+	}
+	if ((path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].hn) &&
+		(path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].cost >
+		 p->cost +weight)) {
+		path[p->pos[dim_y] - 1][p->pos[dim_x] +1 ].cost =
+		  p->cost +weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+									   [p->pos[dim_x]  +1 ].hn);
+	}
+	
+	if ((path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].hn) &&
+		(path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].cost >
+		 p->cost +weight)) {
+		path[p->pos[dim_y] + 1][p->pos[dim_x] -1 ].cost =
+		  p->cost +weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] + 1]
+									   [p->pos[dim_x]  -1 ].hn);
+	}
+	
+	if ((path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].hn) &&
+		(path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].cost >
+		 p->cost +weight)) {
+		path[p->pos[dim_y] - 1][p->pos[dim_x] -1 ].cost =
+		  p->cost +weight;
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_y] = p->pos[dim_y];
+				 // path[p->pos[dim_y] + 1][p->pos[dim_x]    ].from[dim_x] = p->pos[dim_x];
+		heap_decrease_key_no_replace(&h, path[p->pos[dim_y] - 1]
+									   [p->pos[dim_x]  -1 ].hn);
+	}
+			
+    
+    //add four more cases for the diagonal directions for the if statements
+  }
+  
+  // 2d nested loop to update costs, take it out of here and store it in my distance map. Do I need to make a distance map?
+  for(int j = 0; j<DUNGEON_Y; j++){				// this is the copy statement
+	  for(int i = 0; i<DUNGEON_X; i++){
+		  if(path[j][i].cost){
+			  distanceMap[j][i] = path[j][i].cost
+		  }
+		  else{
+			  distanceMap[j][i] = NULL;
+		  }
+	  } 
+  }
+
+  for(int j = 0; j<DUNGEON_Y; j++){				// this is the print statement
+	  for(int i = 0; i<DUNGEON_X; i++){
+		  if(path[j][i].cost!=NULL){
+			  printf("%d", distanceMap[j][i]%10 );
+		  }
+		  else{
+			  printf(" ");
+		  } 
+	  }
+	  printf("\n");	  
+  }
+}
 /* This is a cut-and-paste of the above.  The code is modified to  *
  * calculate paths based on inverse hardnesses so that we get a    *
  * high probability of creating at least one cycle in the dungeon. */
@@ -686,7 +1011,12 @@ int gen_dungeon(dungeon_t *d)
   } while (place_rooms(d));
   connect_rooms(d);
   place_stairs(d);
-
+  
+  
+  
+  
+  
+  
   return 0;
 }
 
@@ -728,6 +1058,9 @@ void render_dungeon(dungeon_t *d)
     }
     putchar('\n');
   }
+  
+  dikstra_tunneling(d);
+  dijkstra_non_tunneling(d);
 }
 
 void delete_dungeon(dungeon_t *d)
