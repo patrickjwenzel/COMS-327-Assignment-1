@@ -11,7 +11,7 @@ void make_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX], u_int8_t hardness[MAP_Y_MA
 int find_room(room_t rooms[], int num_rooms, int x, int y);
 char find_stairs(up_t up_staircases[], int num_up, down_t down_staircases[], int num_down, int x, int y, int is_corridor);
 static int32_t corridor_path_cmp(const void *key, const void *with);
-static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling);
-void print_path_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling);
-int is_connected(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], uint8_t visited[MAP_Y_MAX][MAP_X_MAX], int src_y, int src_x, player_t player);
-void reset_visited(uint8_t visited[MAP_Y_MAX][MAP_X_MAX]);
+static void dijkstra_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t room_array[], int num_rooms, int tunneling);
+void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling);
+int is_connected(uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], uint8_t found_rooms[], room_t room_array[], int num_rooms, int src_y, int src_x, player_t player);
+void do_maps(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], room_t room_array[], int num_rooms, player_t player);

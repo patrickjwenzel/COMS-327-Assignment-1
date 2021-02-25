@@ -26,6 +26,7 @@
 typedef struct corridor_path {
     heap_node_t *heap_node;
     uint8_t pos[2];
+    uint8_t from[2];
     int32_t cost;
 } corridor_path_t;
 
@@ -67,18 +68,13 @@ int main(int argc, char *argv[]){
     up_t up_stairs[num_up];
     down_t down_stairs[num_down];
     player_t player;
-    uint32_t distances[MAP_Y_MAX][MAP_X_MAX];
+    int distances[MAP_Y_MAX][MAP_X_MAX];
 
     if(argc == 1){ //This means that it was just normally ran and dungeon will not be saved
         fill_dungeon(dungeon_map, hardness_map);
         create_dungeon_map(dungeon_map, hardness_map, num_rooms, num_up, num_down, num_stairs_placed, rooms, room_array, up_stairs, down_stairs, &player, 0, 0);
         print_dungeon(dungeon_map);
-        printf("Non-tunneling monster map:\n");
-        dijkstra_map(distances, hardness_map, player, 0);
-        print_path_map(distances, hardness_map, player, 0);
-        printf("Tunneling monster map:\n");
-        dijkstra_map(distances, hardness_map, player, 1);
-        print_path_map(distances, hardness_map, player, 1);
+        do_maps(distances, hardness_map, room_array, num_rooms, player);
 //char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int num_rooms, int num_up, int num_down, int num_stairs_placed[2], int rooms[2], room_t room_array[], up_t up_stairs[],
 // down_t down_stairs[], player_t player, int save
     }
@@ -87,22 +83,12 @@ int main(int argc, char *argv[]){
             fill_dungeon(dungeon_map, hardness_map);
             create_dungeon_map(dungeon_map, hardness_map, num_rooms, num_up, num_down, num_stairs_placed, rooms, room_array, up_stairs, down_stairs, &player, 1, 0);
             print_dungeon(dungeon_map);
-            printf("Non-tunneling monster map:\n");
-            dijkstra_map(distances, hardness_map, player, 0);
-            print_path_map(distances, hardness_map, player, 0);
-            printf("Tunneling monster map:\n");
-            dijkstra_map(distances, hardness_map, player, 1);
-            print_path_map(distances, hardness_map, player, 1);
+            do_maps(distances, hardness_map, room_array, num_rooms, player);
         }
         else if(!strcmp(argv[1], "--load")){ //This will load a dungeon
             load_game(dungeon_map, hardness_map, &num_rooms, num_stairs_placed, room_array, up_stairs, down_stairs, &player);
             print_dungeon(dungeon_map);
-            printf("Non-tunneling monster map:\n");
-            dijkstra_map(distances, hardness_map, player, 0);
-            print_path_map(distances, hardness_map, player, 0);
-            printf("Tunneling monster map:\n");
-            dijkstra_map(distances, hardness_map, player, 1);
-            print_path_map(distances, hardness_map, player, 1);
+            do_maps(distances, hardness_map, room_array, num_rooms, player);
         }
         else if(strcmp(argv[1], "--save") || strcmp(argv[1], "--load")){
             printf("Usage: %s --save|--load\n", argv[0]);
@@ -120,16 +106,20 @@ int main(int argc, char *argv[]){
             printf("Usage: %s --save|--load\n", argv[0]);
             return -1;
 	    }
-        print_dungeon(dungeon_map);
-        printf("Non-tunneling monster map:\n");
-        dijkstra_map(distances, hardness_map, player, 0);
-        print_path_map(distances, hardness_map, player, 0);
-        printf("Tunneling monster map:\n");
-        dijkstra_map(distances, hardness_map, player, 1);
-        print_path_map(distances, hardness_map, player, 1);
+        do_maps(distances, hardness_map, room_array, num_rooms, player);
     }
 
 	return 0;
+}
+
+void do_maps(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], room_t room_array[], int num_rooms, player_t player){
+    printf("Non-tunneling monster map:\n");
+    dijkstra_map(distances, hardness, player, room_array, num_rooms, 0);
+    print_path_map(distances, hardness, player, 0);
+    printf("Tunneling monster map:\n");
+//    static void dijkstra_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t room_array[], int num_rooms, int tunneling);
+    dijkstra_map(distances, hardness, player, NULL, 0, 1);
+    print_path_map(distances, hardness, player, 1);
 }
 
 void create_dungeon_map(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int num_rooms, int num_up, int num_down, int num_stairs_placed[2], int rooms[][2], room_t room_array[], up_t up_stairs[], down_t down_stairs[], player_t *player, int save, int skip) {
@@ -454,7 +444,7 @@ void load_game(char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][M
 
     char *home = getenv("HOME");
     char *game_dir = ".rlg327";
-    char *game_file = DUNGEON; //WELL_DONE HELLO DUNGEON ADVENTURE;
+    char *game_file = ADVENTURE; //WELL_DONE HELLO DUNGEON ADVENTURE "00.rlg327";
 
     char *path = malloc((strlen(home) + strlen(game_dir) + strlen(game_file) + 2 + 1) * sizeof(char));
     sprintf(path, "%s/%s/%s", home, game_dir, game_file);
@@ -568,7 +558,7 @@ void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]){
 /*
  * Prints the distances map, works for both tunneling and non-tunneling monsters
  */
-void print_path_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling){
+void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling){
     int j, i;
     for (j = 0; j < MAP_Y_MAX; j++) {
         for (i = 0; i < MAP_X_MAX; i++) {
@@ -581,7 +571,10 @@ void print_path_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[M
                 }
                 else{
                     if(hardness[j][i] != 0) putchar(' ');
-                    else printf("%d", distances[j][i] % 10);
+                    else {
+                        if(distances[j][i] < 0 || distances[j][i] == INT_MAX) putchar('X');
+                        else printf("%d", distances[j][i] % 10);
+                    }
                 }
             }
         }
@@ -600,7 +593,7 @@ static int32_t corridor_path_cmp(const void *key, const void *with) {
 /*
  * Edited version of Professor's code. Works for tunneling and non-tunneling monsters
  */
-static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, int tunneling){
+static void dijkstra_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t room_array[], int num_rooms, int tunneling){
     static corridor_path_t path[MAP_Y_MAX][MAP_X_MAX], *p;
     static uint32_t init = 0;
     heap_t heap;
@@ -623,7 +616,7 @@ static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardn
     for(y = 0; y < MAP_Y_MAX; y++){
         for(x = 0; x < MAP_X_MAX; x++){
             path[y][x].cost = INT_MAX;
-            distances[y][x] = 0;
+            distances[y][x] = INT_MAX;
         }
     }
 
@@ -651,7 +644,8 @@ static void dijkstra_map(uint32_t distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardn
     while((p = heap_remove_min((&heap)))){
         p->heap_node = NULL;
         weight = (1 + (hardness[p->pos[0]][p->pos[1]] / 85)); // Set the weight so that if it is a room, staircase, or corridor the weight will be one and will be 1+hardness/85 if not
-        distances[p->pos[0]][p->pos[1]] = p->cost + hardness[p->pos[0]][p->pos[1]]; // Add the distance to the distances array
+        distances[p->pos[0]][p->pos[1]] = p->cost;
+
         // Up
         if((path[p->pos[0] - 1][p->pos[1]].heap_node) &&
             (path[p->pos[0] - 1][p->pos[1]].cost > p->cost + weight)){

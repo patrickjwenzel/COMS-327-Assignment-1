@@ -3,6 +3,7 @@
     - PJW Edited dijkstra_map so that it also works for tunneling monsters so that I didn't have to write two algorithms
     - PJW Edited print_map so that it prints for tunneling and non-tunneling monsters
     - PJW Edited main so that you can load in saved maps, save maps, and print their distance maps.
+    - PJW Fixed print_map so that for open space that is not connected to the player an 'X' will be printed.
 
 02-23-2021:
     - PJW Added heap.c, heap.h, and corridor_path_cmp from professor's solutions
