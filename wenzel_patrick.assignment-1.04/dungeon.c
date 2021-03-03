@@ -41,6 +41,8 @@ int main(int argc, char *argv[]){
     dungeon.player.alive = 1;
     dungeon.player.speed = 10;
     int num_stairs_placed[2] = {0, 0};
+    int init = 0;
+    int num_characters;
 
     if(argc == 1){ //This means that it was just normally ran and dungeon will not be saved
         dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
@@ -50,6 +52,14 @@ int main(int argc, char *argv[]){
         do_maps(&dungeon);
         place_monsters(&dungeon);
         print_dungeon(dungeon.dmap);
+        num_characters = dungeon.num_mons + 1;
+        turn_t turn_event[num_characters];
+//        static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters)
+        while(1){
+            turn_decider(&dungeon, turn_event, &init, num_characters);
+            usleep(999999);
+        }
+//        turn_decider(&dungeon);
 
 //char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int num_rooms, int num_up, int num_down, int num_stairs_placed[2], int rooms[2], room_t room_array[], up_t up_stairs[],
 // down_t down_stairs[], player_t player, int save
@@ -115,35 +125,88 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
+static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters){
+    heap_t heap;
+    int i;
+    turn_t *t;
+
+    if(!*init){
+        for(i = 0; i < num_characters; i++){
+            if(!i){
+                turn_event[i].seq = 0;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = PLAYER;
+                turn_event[i].speed = dungeon->player.speed;
+            }
+            else{
+                turn_event[i].seq = i;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = dungeon->mons[i - 1].rep;
+                turn_event[i].speed = dungeon->mons[i - 1].speed;
+            }
+        }
+        *init = 1;
+    }
+
+    heap_init(&heap, turn_cmp, NULL);
+
+    for(i = 0; i < num_characters; i++){
+        turn_event[i].heap_node = heap_insert(&heap, &turn_event[i]);
+    }
+
+    while((t = heap_remove_min((&heap))) && dungeon->num_mons > 0 && dungeon->player.alive){
+        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
+        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
+        move(dungeon, t);
+        t->heap_node = NULL;
+    }
+}
+
+int seen(uint8_t mons[2]){
+    return mons[0] != -1 && mons[1] != -1;
+}
+
+void move(dungeon_t *dungeon, turn_t turn){
+    if(turn.symb == PLAYER){
+        return;
+    }
+    else{
+        if(dungeon->mons[turn.seq - 1].type & TELEPATHIC){ //Monster is telepathic
+            dungeon->mons[turn.seq - 1].pc_location[0] = dungeon->player.y_pos;
+            dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
+            if(dungeon->mons[turn.seq - 1].type & SMART){ //Monster is telepathic and smart
+                if(dungeon->mons[turn.seq - 1].type & TUNNELING){ //Monster is telepathic, smart, and can tunnel
+                    if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0){ // Player is to the Right
+                        if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0){ // Player is above to the right
+
+                        }
+                        else if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos > 0){ //Player is below and to the right
+
+                        }
+                        else{ //Player is directly to the right
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void create_monsters(dungeon_t *dungeon){
     int i, type;
     for(i = 0; i < dungeon->num_mons; i++){
         type = rand() & 0x0000000f;
         dungeon->mons[i].alive = 1;
         dungeon->mons[i].rep = monster_reps[type];
-        dungeon->mons[i].speed = (rand() % 16) + 5;;
+        dungeon->mons[i].speed = (rand() % 16) + 5;
         dungeon->mons[i].type = type;
+        dungeon->mons[i].pc_location[0] = -1;
+        dungeon->mons[i].pc_location[1] = -1;
     }
 }
 
 void place_monsters(dungeon_t *dungeon){
-//    typedef struct dungeon{ //Dungeon struct
-//        char dmap[MAP_Y_MAX][MAP_X_MAX];
-//        uint8_t hardness[MAP_Y_MAX][MAP_X_MAX];
-//        int num_rooms;
-//        int nt_distances[MAP_Y_MAX][MAP_X_MAX];
-//        int t_distances[MAP_Y_MAX][MAP_X_MAX];
-//        player_t player;
-//        room_t *rooms;
-//        mon_t *mons;
-//        uint32_t num_mons;
-//        uint8_t type;
-//        uint16_t num_down;
-//        uint16_t num_up;
-//        up_t *up_stairs;
-//        down_t *down_stairs;
-//    } dungeon_t;
-
     int i;
 
     for(i = 0; i < dungeon->num_mons; i++){
@@ -631,70 +694,6 @@ static int32_t turn_cmp(const void *key, const void *with) {
         ret = ((turn_t *) key)->seq - ((turn_t *) with)->seq;
     }
     return ret;
-}
-
-static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init){
-    int num_characters = dungeon->num_mons + 1;
-    static turn_t *t;
-    static uint32_t init = 0;
-    heap_t heap;
-    int i;
-
-    if(!*init){
-        for(i = 0; i < num_characters; i++){
-            if(!i){
-                turn_event[i].seq = 0;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = PLAYER;
-                turn_event[i].speed = dungeon->player.speed;
-            }
-            else{
-                turn_event[i].seq = i;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = dungeon->mons[i - 1].rep;
-                turn_event[i].speed = dungeon->mons[i - 1].speed;
-            }
-        }
-        *init = 1;
-    }
-
-    heap_init(&heap, turn_cmp, NULL);
-
-    for(i = 0; i < num_characters; i++){
-        turn_event[i].heap_node = heap_insert(&heap, &turn_event[i]);
-    }
-
-    while((t = heap_remove_min((&heap))) && dungeon->num_mons > 0 && dungeon->player.alive){
-        turn_t temp_turn;
-
-        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
-        temp_turn = *t;
-        heap_node_delete(&heap, t->heap_node);
-        heap_decrease_key_no_replace(&heap, temp_turn.heap_node);
-
-
-    }
-//        p->heap_node = NULL;
-//        weight = (1 + (dungeon->hardness[p->pos[0]][p->pos[1]] / 85)); // Set the weight so that if it is a room, staircase, or corridor the weight will be one and will be 1+dungeon->hardness/85 if not
-//        if(tunneling){
-//            dungeon->t_distances[p->pos[0]][p->pos[1]] = p->cost;
-//        }
-//        else{
-//            dungeon->nt_distances[p->pos[0]][p->pos[1]] = p->cost;
-//        }
-//
-//        // Up
-//        if((path[p->pos[0] - 1][p->pos[1]].heap_node) &&
-//           (path[p->pos[0] - 1][p->pos[1]].cost > p->cost + weight)){
-//            path[p->pos[0] - 1][p->pos[1]].cost = p->cost + weight;
-//            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1]].heap_node);
-//        }
-}
-
-void move(dungeon_t *dungeon, turn_t turn){
-    if(turn.symb == PLAYER){
-        return;
-    }
 }
 
 /*

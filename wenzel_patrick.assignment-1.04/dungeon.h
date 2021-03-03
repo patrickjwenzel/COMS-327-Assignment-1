@@ -64,6 +64,7 @@ typedef struct monster{ //Tunneling Monster
     uint8_t speed;
     uint8_t type;
     char rep;
+    uint8_t pc_location[2];
 } mon_t;
 
 typedef struct dungeon{ //Dungeon struct
@@ -102,4 +103,7 @@ void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int
 void do_maps(dungeon_t *dungeon);
 void create_monsters(dungeon_t *dungeon);
 void place_monsters(dungeon_t *dungeon);
-static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init);
+static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters);
+static int32_t turn_cmp(const void *key, const void *with);
+void move(dungeon_t *dungeon, turn_t turn);
+int seen(uint8_t mons[2]);
