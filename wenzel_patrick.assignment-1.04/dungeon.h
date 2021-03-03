@@ -25,6 +25,14 @@ typedef struct corridor_path {
     int32_t cost;
 } corridor_path_t;
 
+typedef struct turn {
+    heap_node_t *heap_node;
+    uint32_t next_turn;
+    uint32_t seq;
+    char symb;
+    uint8_t speed;
+} turn_t;
+
 typedef struct up_staircase{ //Up staircase
     uint8_t x_pos;
     uint8_t y_pos;
@@ -47,7 +55,6 @@ typedef struct player{ //Player character
     uint8_t y_pos;
     uint8_t alive;
     uint8_t speed;
-    uint32_t next_turn;
 } player_t;
 
 typedef struct monster{ //Tunneling Monster
@@ -55,7 +62,6 @@ typedef struct monster{ //Tunneling Monster
     uint8_t y_pos;
     uint8_t alive;
     uint8_t speed;
-    uint32_t next_turn;
     uint8_t type;
     char rep;
 } mon_t;
@@ -76,9 +82,9 @@ typedef struct dungeon{ //Dungeon struct
     down_t *down_stairs;
 } dungeon_t;
 
-const char monster_reps[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+const char monster_reps[16] = "0123456789abcdef";
 
-void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save, int skip);
+void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save);
 void fill_dungeon(dungeon_t *dungeon);
 room_t newRoom(int x_pos, int y_pos, int x_size, int y_size);
 int is_room(dungeon_t dungeon, int room_x_pos, int room_y_pos, int rooms[][2], int i);
@@ -96,3 +102,4 @@ void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int
 void do_maps(dungeon_t *dungeon);
 void create_monsters(dungeon_t *dungeon);
 void place_monsters(dungeon_t *dungeon);
+static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init);

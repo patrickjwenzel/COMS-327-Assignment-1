@@ -46,17 +46,18 @@ int main(int argc, char *argv[]){
         dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
         create_monsters(&dungeon);
         fill_dungeon(&dungeon);
-        create_dungeon_map(&dungeon, num_stairs_placed, 0, 0);
+        create_dungeon_map(&dungeon, num_stairs_placed, 0);
+        do_maps(&dungeon);
         place_monsters(&dungeon);
         print_dungeon(dungeon.dmap);
-//        do_maps(&dungeon);
+
 //char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int num_rooms, int num_up, int num_down, int num_stairs_placed[2], int rooms[2], room_t room_array[], up_t up_stairs[],
 // down_t down_stairs[], player_t player, int save
     }
 	else if(argc == 2){
         if(!strcmp(argv[1], "--save")){ //This means the dungeon will be generated and saved;
             fill_dungeon(&dungeon);
-            create_dungeon_map(&dungeon, num_stairs_placed, 1, 0);
+            create_dungeon_map(&dungeon, num_stairs_placed, 1);
             print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
@@ -72,12 +73,12 @@ int main(int argc, char *argv[]){
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
             create_monsters(&dungeon);
             fill_dungeon(&dungeon);
-            create_dungeon_map(&dungeon, num_stairs_placed, 1, 0);
+            create_dungeon_map(&dungeon, num_stairs_placed, 1);
             place_monsters(&dungeon);
             print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
-        else if(strcmp(argv[1], "--save") || strcmp(argv[1], "--load")){
+        else{
             printf("Usage: %s --save|--load\n", argv[0]);
             return -1;
         }
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]){
             load_game(&dungeon, num_stairs_placed);
 	    }
 	    else if(!strcmp(argv[1], "--save") || !strcmp(argv[2], "--save")) {
-            create_dungeon_map(&dungeon, num_stairs_placed, 1, 1);
+            save_game(&dungeon, num_stairs_placed);
         }
 	    else{
             printf("Usage: %s --save|--load\n", argv[0]);
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]){
             load_game(&dungeon, num_stairs_placed);
         }
         else if(!strcmp(argv[1], "--save") || !strcmp(argv[2], "--save") || !strcmp(argv[3], "--save")) {
-            create_dungeon_map(&dungeon, num_stairs_placed, 1, 1);
+            save_game(&dungeon, num_stairs_placed);
         }
         else{
             printf("Usage: %s --save|--load\n", argv[0]);
@@ -121,7 +122,6 @@ void create_monsters(dungeon_t *dungeon){
         dungeon->mons[i].alive = 1;
         dungeon->mons[i].rep = monster_reps[type];
         dungeon->mons[i].speed = (rand() % 16) + 5;;
-        dungeon->mons[i].next_turn = 0;
         dungeon->mons[i].type = type;
     }
 }
@@ -170,7 +170,7 @@ void place_monsters(dungeon_t *dungeon){
             while(1){
                 x = (rand() % (MAP_X_MAX - 2)) + 1;
                 y = (rand() % (MAP_Y_MAX - 2)) + 1;
-                if (dungeon->dmap[y][x] == PLAYER || dungeon->hardness[y][x]) {
+                if (dungeon->dmap[y][x] == PLAYER || dungeon->hardness[y][x] || (!dungeon->hardness[y][x] && dungeon->dmap[y][x] == ' ')) {
                     continue;
                 } else {
                     dungeon->dmap[y][x] = dungeon->mons[i].rep;
@@ -184,84 +184,82 @@ void place_monsters(dungeon_t *dungeon){
     }
 }
 
-void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save, int skip) {
+void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save) {
 	int i, j = 0, x, y, room_x_pos, room_y_pos, num_rooms_placed = 0, num_cycles = 0, player_placed = 0;
     int rooms[dungeon->num_rooms][2];
-	if(!skip){
-        while(num_cycles < dungeon->num_rooms || num_rooms_placed < dungeon->num_rooms){ //Will loop until all rooms have been placed
-            for(i = 0; i < dungeon->num_rooms; i++){
-                rooms[i][0]=(rand() % 12) + 4; //Makes the room between 4 and 15 units in the x direction
-                rooms[i][1]=(rand() % 12) + 3; //Makes the room between 3 and 15 units in the y direction
-            }
+    while(num_cycles < dungeon->num_rooms || num_rooms_placed < dungeon->num_rooms){ //Will loop until all rooms have been placed
+        for(i = 0; i < dungeon->num_rooms; i++){
+            rooms[i][0]=(rand() % 12) + 4; //Makes the room between 4 and 15 units in the x direction
+            rooms[i][1]=(rand() % 12) + 3; //Makes the room between 3 and 15 units in the y direction
+        }
 
-            for(i = 0; i < dungeon->num_rooms - num_rooms_placed; i++){
-                room_x_pos = (rand() % (MAP_X_MAX - 1)) + 1; //Makes the x coordinate between 1 and 70 (So a border can be placed)
-                room_y_pos = (rand() % (MAP_Y_MAX - 1)) + 1;//Makes the x coordinate between 1 and 70 (For Border reasons)
+        for(i = 0; i < dungeon->num_rooms - num_rooms_placed; i++){
+            room_x_pos = (rand() % (MAP_X_MAX - 1)) + 1; //Makes the x coordinate between 1 and 70 (So a border can be placed)
+            room_y_pos = (rand() % (MAP_Y_MAX - 1)) + 1;//Makes the x coordinate between 1 and 70 (For Border reasons)
 
-                if(rooms[i][0] + room_x_pos < MAP_X_MAX && rooms[i][1] + room_y_pos < MAP_Y_MAX){ //If the coordinates of the are on the grid
+            if(rooms[i][0] + room_x_pos < MAP_X_MAX && rooms[i][1] + room_y_pos < MAP_Y_MAX){ //If the coordinates of the are on the grid
 
-                    if(!is_room(*dungeon, room_x_pos, room_y_pos, rooms, i)){ //If the room does not collide with another room
-                        dungeon->rooms[num_rooms_placed] = newRoom(room_x_pos, room_y_pos, rooms[i][0], rooms[i][1]);
+                if(!is_room(*dungeon, room_x_pos, room_y_pos, rooms, i)){ //If the room does not collide with another room
+                    dungeon->rooms[num_rooms_placed] = newRoom(room_x_pos, room_y_pos, rooms[i][0], rooms[i][1]);
 
-                        for(y = room_y_pos; y < room_y_pos + rooms[i][1]; y++){//Placing the room
-                            for(x = room_x_pos; x < room_x_pos + rooms[i][0]; x++){
-                                dungeon->hardness[y][x] = 0;
-                                int staircase = (rand() % (100)) + 1; //Gets a number from 1-100
-                                int up_or_down;
-                                if(!player_placed){
-                                    dungeon->dmap[y][x] = PLAYER; //Place a player in the first room
-                                    dungeon->player.x_pos = x;
-                                    dungeon->player.y_pos = y;
-                                    player_placed = 1;
-                                }
-                                else{
-                                    if(staircase >= 1 && staircase <= 3){ //If random number is 1-3, place a staircase
-                                        up_or_down = (rand() % 10) + 1; //Gets a random number 1-10
-                                        if(up_or_down > 5 && num_stairs_placed[0] < dungeon->num_up){ //If the number is 6-10 and the max up staircases have not been placed place an up staircase
-                                            dungeon->dmap[y][x] = UP;
-                                            up_t up;
-                                            up.x_pos = x;
-                                            up.y_pos = y;
-                                            dungeon->up_stairs[num_stairs_placed[0]++] = up;
-                                        }
-                                        else if(up_or_down <= 5 && num_stairs_placed[1]  < dungeon->num_down){ //If the number is 1-5 and the max down staircases have not been placed place a down staircase
-                                            dungeon->dmap[y][x] = DOWN;
-                                            down_t down;
-                                            down.y_pos = y;
-                                            down.x_pos = x;
-                                            dungeon->down_stairs[num_stairs_placed[1]++] = down;
-                                        }
-                                        else{ //Otherwise, make it a room
-                                            dungeon->dmap[y][x] = ROOM;
-                                        }
+                    for(y = room_y_pos; y < room_y_pos + rooms[i][1]; y++){//Placing the room
+                        for(x = room_x_pos; x < room_x_pos + rooms[i][0]; x++){
+                            dungeon->hardness[y][x] = 0;
+                            int staircase = (rand() % (100)) + 1; //Gets a number from 1-100
+                            int up_or_down;
+                            if(!player_placed){
+                                dungeon->dmap[y][x] = PLAYER; //Place a player in the first room
+                                dungeon->player.x_pos = x;
+                                dungeon->player.y_pos = y;
+                                player_placed = 1;
+                            }
+                            else{
+                                if(staircase >= 1 && staircase <= 3){ //If random number is 1-3, place a staircase
+                                    up_or_down = (rand() % 10) + 1; //Gets a random number 1-10
+                                    if(up_or_down > 5 && num_stairs_placed[0] < dungeon->num_up){ //If the number is 6-10 and the max up staircases have not been placed place an up staircase
+                                        dungeon->dmap[y][x] = UP;
+                                        up_t up;
+                                        up.x_pos = x;
+                                        up.y_pos = y;
+                                        dungeon->up_stairs[num_stairs_placed[0]++] = up;
                                     }
-                                    else {
+                                    else if(up_or_down <= 5 && num_stairs_placed[1]  < dungeon->num_down){ //If the number is 1-5 and the max down staircases have not been placed place a down staircase
+                                        dungeon->dmap[y][x] = DOWN;
+                                        down_t down;
+                                        down.y_pos = y;
+                                        down.x_pos = x;
+                                        dungeon->down_stairs[num_stairs_placed[1]++] = down;
+                                    }
+                                    else{ //Otherwise, make it a room
                                         dungeon->dmap[y][x] = ROOM;
                                     }
                                 }
-
+                                else {
+                                    dungeon->dmap[y][x] = ROOM;
+                                }
                             }
+
                         }
-                        num_rooms_placed++;
                     }
+                    num_rooms_placed++;
                 }
             }
-            num_cycles++;
         }
+        num_cycles++;
+    }
 
-        for(i = 1; i < dungeon->num_rooms; i++){
-            //room_array[i] = src
-            //room_array[j] = dest
+    for(i = 1; i < dungeon->num_rooms; i++){
+        //room_array[i] = src
+        //room_array[j] = dest
 //            void shortest_path(dungeon_t *dungeon, int src_x, int src_y, int dest_x, int dest_y, int num_stairs_placed[]);
-            shortest_path(dungeon, dungeon->rooms[i].x_pos, dungeon->rooms[i].y_pos, dungeon->rooms[j].x_pos, dungeon->rooms[j].y_pos, num_stairs_placed); //Make a path from one room to the next
-            j = i;
-        }
-	}
+        shortest_path(dungeon, dungeon->rooms[i].x_pos, dungeon->rooms[i].y_pos, dungeon->rooms[j].x_pos, dungeon->rooms[j].y_pos, num_stairs_placed); //Make a path from one room to the next
+        j = i;
+    }
 
-  	if(save){ //If we are saving, write this dungeon to disk
-  	    save_game(dungeon, num_stairs_placed);
-  	}
-	return;
+    if(save){ //If we are saving, write this dungeon to disk
+        save_game(dungeon, num_stairs_placed);
+    }
+    return;
 }
 
 void fill_dungeon(dungeon_t *dungeon){
@@ -625,6 +623,78 @@ void do_maps(dungeon_t *dungeon){
  */
 static int32_t corridor_path_cmp(const void *key, const void *with) {
     return ((corridor_path_t *) key)->cost - ((corridor_path_t *) with)->cost;
+}
+
+static int32_t turn_cmp(const void *key, const void *with) {
+    int32_t ret = ((turn_t *) key)->next_turn - ((turn_t *) with)->next_turn;
+    if(!ret){
+        ret = ((turn_t *) key)->seq - ((turn_t *) with)->seq;
+    }
+    return ret;
+}
+
+static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init){
+    int num_characters = dungeon->num_mons + 1;
+    static turn_t *t;
+    static uint32_t init = 0;
+    heap_t heap;
+    int i;
+
+    if(!*init){
+        for(i = 0; i < num_characters; i++){
+            if(!i){
+                turn_event[i].seq = 0;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = PLAYER;
+                turn_event[i].speed = dungeon->player.speed;
+            }
+            else{
+                turn_event[i].seq = i;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = dungeon->mons[i - 1].rep;
+                turn_event[i].speed = dungeon->mons[i - 1].speed;
+            }
+        }
+        *init = 1;
+    }
+
+    heap_init(&heap, turn_cmp, NULL);
+
+    for(i = 0; i < num_characters; i++){
+        turn_event[i].heap_node = heap_insert(&heap, &turn_event[i]);
+    }
+
+    while((t = heap_remove_min((&heap))) && dungeon->num_mons > 0 && dungeon->player.alive){
+        turn_t temp_turn;
+
+        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
+        temp_turn = *t;
+        heap_node_delete(&heap, t->heap_node);
+        heap_decrease_key_no_replace(&heap, temp_turn.heap_node);
+
+
+    }
+//        p->heap_node = NULL;
+//        weight = (1 + (dungeon->hardness[p->pos[0]][p->pos[1]] / 85)); // Set the weight so that if it is a room, staircase, or corridor the weight will be one and will be 1+dungeon->hardness/85 if not
+//        if(tunneling){
+//            dungeon->t_distances[p->pos[0]][p->pos[1]] = p->cost;
+//        }
+//        else{
+//            dungeon->nt_distances[p->pos[0]][p->pos[1]] = p->cost;
+//        }
+//
+//        // Up
+//        if((path[p->pos[0] - 1][p->pos[1]].heap_node) &&
+//           (path[p->pos[0] - 1][p->pos[1]].cost > p->cost + weight)){
+//            path[p->pos[0] - 1][p->pos[1]].cost = p->cost + weight;
+//            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1]].heap_node);
+//        }
+}
+
+void move(dungeon_t *dungeon, turn_t turn){
+    if(turn.symb == PLAYER){
+        return;
+    }
 }
 
 /*
