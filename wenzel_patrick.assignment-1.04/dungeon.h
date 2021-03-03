@@ -7,12 +7,13 @@
 #define CORRIDOR '#'
 #define PLAYER '@'
 #define ROOM '.'
-#define NON_TUNNELING 'N'
-#define TUNNELING 'M'
+#define ROCK ' '
+#define FIFTEEN 0x0000000f
 #define ADVENTURE  "adventure.rlg327"
 #define HELLO "hello.rlg327"
 #define WELL_DONE "welldone.rlg327"
 #define DUNGEON "dungeon"
+#define CHANCE 0x00000001
 #define SMART 0x1
 #define TELEPATHIC 0x2
 #define TUNNEL 0x4
@@ -77,6 +78,7 @@ typedef struct dungeon{ //Dungeon struct
     room_t *rooms;
     mon_t *mons;
     uint32_t num_mons;
+    uint32_t num_mons_alive;
     uint16_t num_down;
     uint16_t num_up;
     up_t *up_stairs;
@@ -103,7 +105,9 @@ void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int
 void do_maps(dungeon_t *dungeon);
 void create_monsters(dungeon_t *dungeon);
 void place_monsters(dungeon_t *dungeon);
-static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters);
+static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters);
 static int32_t turn_cmp(const void *key, const void *with);
 void move(dungeon_t *dungeon, turn_t turn);
 int seen(uint8_t mons[2]);
+void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int tunneling, int smart);
+int is_character(dungeon_t *dungeon, int next_pos[2]);
