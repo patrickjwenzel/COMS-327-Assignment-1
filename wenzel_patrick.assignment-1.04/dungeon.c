@@ -42,9 +42,11 @@ int main(int argc, char *argv[]){
     dungeon.player.speed = 10;
     int num_stairs_placed[2] = {0, 0};
     int init = 0;
-    int num_characters;
+    int num_characters = dungeon.num_mons + 1;
+    turn_t *turn_event;
 
     if(argc == 1){ //This means that it was just normally ran and dungeon will not be saved
+        turn_event = malloc(num_characters * sizeof(turn_t));
         dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
         create_monsters(&dungeon);
         fill_dungeon(&dungeon);
@@ -52,14 +54,8 @@ int main(int argc, char *argv[]){
         do_maps(&dungeon);
         place_monsters(&dungeon);
         print_dungeon(dungeon.dmap);
-        num_characters = dungeon.num_mons + 1;
-        turn_t turn_event[num_characters];
 //        static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters)
-        while(turn_decider(&dungeon, turn_event, &init, num_characters)){
-            usleep(999999);
-            print_dungeon(dungeon.dmap);
-            fflush(stdout);
-        }
+
 //        turn_decider(&dungeon);
 
 //char dungeon[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], int num_rooms, int num_up, int num_down, int num_stairs_placed[2], int rooms[2], room_t room_array[], up_t up_stairs[],
@@ -67,24 +63,21 @@ int main(int argc, char *argv[]){
     }
 	else if(argc == 2){
         if(!strcmp(argv[1], "--save")){ //This means the dungeon will be generated and saved;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            create_monsters(&dungeon);
             fill_dungeon(&dungeon);
             create_dungeon_map(&dungeon, num_stairs_placed, 1);
+            place_monsters(&dungeon);
             print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else if(!strcmp(argv[1], "--load")){ //This will load a dungeon
 //        void load_game(dungeon_t *dungeon, int num_stairs_placed[2], room_t room_array[]);
-            load_game(&dungeon, num_stairs_placed);
-            print_dungeon(dungeon.dmap);
-            do_maps(&dungeon);
-        }
-        else if(!strcmp(argv[1], "--nummon")){ //This will load a dungeon
-//        void load_game(dungeon_t *dungeon, int num_stairs_placed[2], room_t room_array[]);
-            dungeon.num_mons = (uint16_t) atoi(argv[1]);
+            turn_event = malloc(num_characters * sizeof(turn_t));
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            load_game(&dungeon, num_stairs_placed);
             create_monsters(&dungeon);
-            fill_dungeon(&dungeon);
-            create_dungeon_map(&dungeon, num_stairs_placed, 1);
             place_monsters(&dungeon);
             print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
@@ -95,11 +88,29 @@ int main(int argc, char *argv[]){
         }
 	}
 	else if(argc == 3){
-	    if(!strcmp(argv[1], "--load") || !strcmp(argv[2], "--load")){
+	    if((!strcmp(argv[1], "--load") && !strcmp(argv[2], "--save")) || (!strcmp(argv[2], "--load") && !strcmp(argv[1], "--save"))){
             load_game(&dungeon, num_stairs_placed);
-	    }
-	    else if(!strcmp(argv[1], "--save") || !strcmp(argv[2], "--save")) {
             save_game(&dungeon, num_stairs_placed);
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            num_characters = dungeon.num_mons + 1;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            create_monsters(&dungeon);
+            place_monsters(&dungeon);
+            print_dungeon(dungeon.dmap);
+            do_maps(&dungeon);
+	    }
+        else if(!strcmp(argv[1], "--nummon")){ //This will load a dungeon
+//        void load_game(dungeon_t *dungeon, int num_stairs_placed[2], room_t room_array[]);
+            dungeon.num_mons = (uint16_t) atoi(argv[2]);
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            num_characters = dungeon.num_mons + 1;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            create_monsters(&dungeon);
+            fill_dungeon(&dungeon);
+            create_dungeon_map(&dungeon, num_stairs_placed, 1);
+            place_monsters(&dungeon);
+            print_dungeon(dungeon.dmap);
+            do_maps(&dungeon);
         }
 	    else{
             printf("Usage: %s --save|--load\n", argv[0]);
@@ -107,20 +118,53 @@ int main(int argc, char *argv[]){
 	    }
         do_maps(&dungeon);
     }
-	else if(argc == 4){
-        if(!strcmp(argv[1], "--load") || !strcmp(argv[2], "--load") || !strcmp(argv[3], "--load")){
+	else if(argc == 5){
+        if((!strcmp(argv[1], "--load") && !strcmp(argv[2], "--save") && !strcmp(argv[3], "--nummon")) || (!strcmp(argv[2], "--load") && !strcmp(argv[1], "--save") && !strcmp(argv[3], "--nummon"))){
             load_game(&dungeon, num_stairs_placed);
-        }
-        else if(!strcmp(argv[1], "--save") || !strcmp(argv[2], "--save") || !strcmp(argv[3], "--save")) {
             save_game(&dungeon, num_stairs_placed);
+            dungeon.num_mons = (uint16_t) atoi(argv[4]);
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            num_characters = dungeon.num_mons + 1;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            create_monsters(&dungeon);
+            place_monsters(&dungeon);
+            print_dungeon(dungeon.dmap);
+            do_maps(&dungeon);
+        }
+        else if((!strcmp(argv[1], "--load") && !strcmp(argv[2], "--nummon") && !strcmp(argv[4], "--save")) || (!strcmp(argv[1], "--save") && !strcmp(argv[2], "--nummon") && !strcmp(argv[4], "--load")) ){
+            load_game(&dungeon, num_stairs_placed);
+            save_game(&dungeon, num_stairs_placed);
+            dungeon.num_mons = (uint16_t) atoi(argv[3]);
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            num_characters = dungeon.num_mons + 1;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            create_monsters(&dungeon);
+            place_monsters(&dungeon);
+            print_dungeon(dungeon.dmap);
+            do_maps(&dungeon);
+        }
+        else if((!strcmp(argv[1], "--nummon") && !strcmp(argv[3], "--load") && !strcmp(argv[4], "--save")) || (!strcmp(argv[1], "--nummon") && !strcmp(argv[3], "--save") && !strcmp(argv[4], "--load"))){
+            load_game(&dungeon, num_stairs_placed);
+            save_game(&dungeon, num_stairs_placed);
+            dungeon.num_mons = (uint16_t) atoi(argv[2]);
+            dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
+            num_characters = dungeon.num_mons + 1;
+            turn_event = malloc(num_characters * sizeof(turn_t));
+            create_monsters(&dungeon);
+            place_monsters(&dungeon);
+            print_dungeon(dungeon.dmap);
+            do_maps(&dungeon);
         }
         else{
             printf("Usage: %s --save|--load\n", argv[0]);
             return -1;
         }
-        do_maps(&dungeon);
 	}
-
+    while(turn_decider(&dungeon, turn_event, &init, num_characters)){
+        usleep(USLEEP_MAX/FPS);
+        print_dungeon(dungeon.dmap);
+        fflush(stdout);
+    }
 	printf("%s\n\nYou faced %d monsters.\n", dungeon.player.alive ? "You win!" : "You suck, you lost #luser!", dungeon.num_mons);
 
 	return 0;
@@ -148,17 +192,25 @@ static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int 
         }
         *init = 1;
     }
-
+    
     heap_init(&heap, turn_cmp, NULL);
 
     for(i = 0; i < num_characters; i++){
-        turn_event[i].heap_node = (!t || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
+        turn_event[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
     }
 
     while((t = heap_remove_min((&heap))) && dungeon->num_mons_alive > 0 && dungeon->player.alive){
 //        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
         t->next_turn = t->next_turn + floor((double)(1000/t->speed));
-        move(dungeon, *t);
+        if(!t->seq){
+            move(dungeon, *t);
+        }
+        else{
+            if(dungeon->mons[t->seq - 1].alive){
+                move(dungeon, *t);
+            }
+        }
+
         t->heap_node = NULL;
         if(dungeon->player.alive) continue;
         else break;
@@ -184,13 +236,33 @@ void move(dungeon_t *dungeon, turn_t turn){
             dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
             if(dungeon->mons[turn.seq - 1].type & SMART){ //Monster is telepathic and smart
                 if(dungeon->mons[turn.seq - 1].type & TUNNEL){ //Monster is telepathic, smart, and can tunnel
+                    get_next_pos(dungeon, turn, next_pos, 1, 1);
                     if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
-
+                        while(1){
+                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                            if(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) continue;
+                            else break;
+                        }
                     }
-                    else{
-                        get_next_pos(dungeon, turn, next_pos, 1, 1);
-                        character = is_character(dungeon, next_pos);
-                        if(character == 1){
+                    character = is_character(dungeon, dungeon->mons, next_pos);
+                    if(character == 1){
+                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
+                            do_maps(dungeon);
+                        }
+                        else{
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
+                        }
+                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                    }
+                    else if(!character){
+                        if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){
+                            dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                            dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
                             if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
                                 dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
                                 do_maps(dungeon);
@@ -198,30 +270,56 @@ void move(dungeon_t *dungeon, turn_t turn){
                             else{
                                 dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
                             }
-                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        }
-                        else if(!character){
-                            if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){
-                                dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
-                                dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
-                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                                if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                                    dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                                    do_maps(dungeon);
-                                }
-                                else{
-                                    dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                                }
-                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
-                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                            }
-                            else{
-                                dungeon->hardness[next_pos[0]][next_pos[1]] -= 85;
-                            }
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
                         }
                         else{
-                            return;
+                            dungeon->hardness[next_pos[0]][next_pos[1]] -= 85;
                         }
+                    }
+                    else{
+                        return;
+                    }
+                }
+                else{ // Is Smart and Telepathic
+                    get_next_pos(dungeon, turn, next_pos, 0, 1);
+                    if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
+                        while(1){
+                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                            if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == ROCK) continue;
+                            else break;
+                        }
+                    }
+                    character = is_character(dungeon, dungeon->mons, next_pos);
+                    if(character == 1){
+                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
+                            do_maps(dungeon);
+                        }
+                        else{
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
+                        }
+                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                    }
+                    else if(!character){
+                        dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                        dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
+                            do_maps(dungeon);
+                        }
+                        else{
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
+                        }
+                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                    }
+                    else{
+                        return;
                     }
                 }
             }
@@ -229,11 +327,11 @@ void move(dungeon_t *dungeon, turn_t turn){
     }
 }
 
-int is_character(dungeon_t *dungeon, int next_pos[2]){
+int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2]){
     int i;
     for(i = 0; i < dungeon->num_mons + 1; i++){
         if((next_pos[0] == dungeon->mons[i - 1].y_pos && next_pos[1] == dungeon->mons[i - 1].x_pos)){
-            dungeon->mons[i - 1].alive = 0;
+            mons[i - 1].alive = 0;
             dungeon->num_mons_alive--;
             return 1;
         }
@@ -288,7 +386,48 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int tunnelin
                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
             }
         }
-
+    }
+    else{
+        if(smart){
+            min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+            }
+            if(dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){
+                min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+            }
+        }
     }
 }
 

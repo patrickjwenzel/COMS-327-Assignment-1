@@ -18,6 +18,9 @@
 #define TELEPATHIC 0x2
 #define TUNNEL 0x4
 #define ERRATIC 0x8
+#define DEBUG 0
+#define USLEEP_MAX 999999
+#define FPS 1
 
 typedef struct corridor_path {
     heap_node_t *heap_node;
@@ -110,4 +113,4 @@ static int32_t turn_cmp(const void *key, const void *with);
 void move(dungeon_t *dungeon, turn_t turn);
 int seen(uint8_t mons[2]);
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int tunneling, int smart);
-int is_character(dungeon_t *dungeon, int next_pos[2]);
+int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2]);

@@ -1,3 +1,5 @@
+NUMMON =
+
 build:
 	gcc -Wall dungeon.c -lm -o dungeon.o
 	
@@ -15,6 +17,27 @@ sl: dungeon.o
 	
 ls: dungeon.o
 	./dungeon.o --load --save
+	
+monster: dungeon.o
+	./dungeon.o --nummon $(NUMMON)
+
+lsn:	dungeon.o
+	./dungeon.o --load --save --nummon $(NUMMON)
+
+lns:	dungeon.o
+	./dungeon.o --load --nummon $(NUMMON) --save
+
+snl:	dungeon.o
+	./dungeon.o --save --nummon $(NUMMON) --load
+
+sln:	dungeon.o
+	./dungeon.o --save --load --nummon $(NUMMON)
+	
+nsl:	dungeon.o
+	./dungeon.o --nummon $(NUMMON) --save --load
+
+nls:	dungeon.o
+	./dungeon.o --nummon $(NUMMON) --load --save
 
 clean:
 	rm *.o
