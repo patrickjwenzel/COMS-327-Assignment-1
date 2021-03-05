@@ -23,7 +23,6 @@ typedef struct corridor_path {
   int32_t cost;
 } corridor_path_t;
 
-/*
 static uint32_t in_room(dungeon_t *d, int16_t y, int16_t x)
 {
   int i;
@@ -39,7 +38,261 @@ static uint32_t in_room(dungeon_t *d, int16_t y, int16_t x)
 
   return 0;
 }
+
+
+static int32_t turn_cmp(const void *key, const void *with){
+	int32_t num = ((charac_t *) key)->priority -((charac_t *) with)->priority;
+	if(!num){
+		num =((charac_t *) key)->order - ((charac_t *) with)->order;
+	}
+
+	return num;
+}
+
+
+/*
+static void whose_turn(dungeon_t *dungeon, int *init){
+    heap_t heap;
+    int i;
+    charac_t *t;
+
+    if(!*init){
+        for(i = 0; i < dungeon->numChar; i++){
+            if(!i){
+                dungeon->characters[i].priority = 0;
+                dungeon->characters[i].order = 0;
+            }
+            else{
+            	dungeon->characters[i].priority = i;
+            	dungeon->characters[i].order = 0;
+            }
+        }
+        *init = 1;
+    }
+
+    heap_init(&heap, turn_cmp, NULL);		// make a turn comparator
+
+    for(i = 0; i < dungeon->numChar; i++){
+    	heap_insert(&heap, &dungeon->characters[i]);
+    }
+
+    while((t = heap_remove_min((&heap))) && dungeon->numChar >= 0 && dungeon->playerAlive){
+        printf("%c: %d %d %d\n", t->symb, t->priority, t->order, t->speed);
+        t->priority = t->priority + floor((double)(1000/t->speed));
+        move(dungeon, t);
+
+    }
+}
 */
+void move(dungeon_t *d, character_t *body){
+	int nextPos[2];
+	int character;
+	int tunn = (body->characteristics & TUNNELING);
+	int smart = (body->characteristics & SMART);
+	int tele = (body->characteristics & TUNNELING);
+
+	nextPos(*d, *next_pos, int tunn, int smart, int tele, charac_t *body);
+	if(tunn)
+	{
+		if(hardness[next_pos[0]][next_pos[1]] )
+		{
+			if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){
+				d->hardness[next_pos[0]][next_pos[1]] = 0;
+				body->xPos = next_pos[1];
+				body->yPos = next_pos[0];
+				d->map[next_pos[0]][next_pos[1]] = ter_floor_room;
+				dijkstra_tunnel(*d);
+			}
+			else{
+				d->hardness[next_pos[0]][next_pos[1]] -=85;
+				dijkstra_tunnel(*d);
+			}
+		}
+		else if(d->monMap[next_pos[0]][next_pos[1]]){
+			monMap[next_pos[0]][next_pos[1]].isAlive = 0;
+			d->numChar --;
+			if(!(monMap[next_pos[0]][next_pos[1]].isNPC)){
+				d->playerAlive = 0;
+			}
+				body->xPos = next_pos[1];
+				body->yPos = next_pos[0];
+				dijkstra_tunnel(*d);
+
+			}
+
+		}
+		else
+		{
+			body->xPos = next_pos[1];
+			body->yPos = next_pos[0];
+			dijkstra_tunnel(*d);
+		}
+	}
+
+	else
+	{
+		if(d->monMap[next_pos[0]][next_pos[1]]){
+			monMap[next_pos[0]][next_pos[1]].isAlive = 0;
+			if(!(monMap[next_pos[0]][next_pos[1]].isNPC)){
+				d->playerAlive = 0;
+				body->xPos = next_pos[1];
+				body->yPos = next_pos[0];
+				dijkstra(*d);
+
+			}
+		}
+		else
+		{
+			body->xPos = next_pos[1];
+			body->yPos = next_pos[0];
+			dijkstra(*d);
+		}
+	}
+
+
+
+}
+
+
+
+void place_monsters(dungeon_t *d, charac_t *body){
+    int i;
+
+    for(i = 0; i < d->numChar; i++){
+    	if(body->isNPC){
+    		int x, y;
+    		int inRoom = 0;
+    		while(!inRoom){
+                x = (rand() % (MAP_X_MAX - 2)) + 1;
+                y = (rand() % (MAP_Y_MAX - 2)) + 1;
+
+                inRoom = in_room(*d, y, x);
+                if (inRoom) {
+                    d->hardness[y][x] = 0;
+                    body->xPos = x;
+                    body->yPos = y;
+                }
+            }
+    	}
+    }
+}
+
+
+
+void nextPos(dungeon_t *d, int *next_pos[2], int tunn, int smart, int tele, charac_t body){
+	int min_move;
+
+	if(tunn){
+		min_move = d->pc_tunnel[body->yPos-1][body->xPos-1];
+		next_pos[0] = body.yPos-1;
+		next_pos[1] = body.xPos-1;
+		//if(smart && tele){
+			if(d->pc_tunnel[body->yPos-1][body->xPos] <min_move){
+				min_move = d->pc_tunnel[body->yPos-1][body->xPos];
+				next_pos[0] = body->yPos-1;
+				next_pos[1] = body->xPos;
+			}
+			if(d->pc_tunnel[body->yPos-1][body->xPos+1] <min_move){
+				min_move = d->pc_tunnel[body->yPos-1][body->xPos+1];
+				next_pos[0] = body->yPos-1;
+				next_pos[1] = body->xPos+1;
+			}
+			if(d->pc_tunnel[body->yPos][body->xPos-1] <min_move){
+				min_move = d->pc_tunnel[body->yPos][body->xPos-1];
+				next_pos[0] = body->yPos;
+				next_pos[1] = body->xPos-1;
+			}
+			if(d->pc_tunnel[body->yPos][body->xPos+1] <min_move){
+				min_move = d->pc_tunnel[body->yPos-1][body->xPos+1];
+				next_pos[0] = body->yPos;
+				next_pos[1] = body->xPos+1;
+			}
+			if(d->pc_tunnel[body->yPos+1][body->xPos] <min_move){
+				min_move = d->pc_tunnel[body->yPos+1][body->xPos];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos;
+			}
+			if(d->pc_tunnel[body->yPos+1][body->xPos-1] <min_move){
+				min_move = d->pc_tunnel[body->yPos+1][body->xPos-1];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos-1;
+			}
+			if(d->pc_tunnel[body->yPos+1][body->xPos+1] <min_move){
+				min_move = d->pc_tunnel[body->yPos+1][body->xPos+1];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos+1;
+			}
+			return;
+	/*	}
+
+		else if(smart){
+
+		}
+		else if(tele)
+		{
+
+		}
+		else{
+
+		}
+		*/
+	}
+
+	else{// if(smart && tele){
+		min_move = d->pc_distance[body->yPos-1][body->xPos-1];
+		next_pos[0] = d->body.yPos-1;
+		next_pos[1] = body.xPos-1;
+		//if(smart && tele){
+			if(d->pc_distance[body->yPos-1][body->xPos] <min_move){
+				min_move = d->pc_distance[body->yPos-1][body->xPos];
+				next_pos[0] = body->yPos-1;
+				next_pos[1] = body->xPos;
+			}
+			if(d->pc_distance[body->yPos-1][body->xPos+1] <min_move){
+				min_move = d->pc_distance[body->yPos-1][body->xPos+1];
+				next_pos[0] = body->yPos-1;
+				next_pos[1] = body->xPos+1;
+			}
+			if(d->pc_distance[body->yPos][body->xPos-1] <min_move){
+				min_move = d->pc_distance[body->yPos][body->xPos-1];
+				next_pos[0] = body->yPos;
+				next_pos[1] = body->xPos-1;
+			}
+			if(d->pc_distance[body->yPos][body->xPos+1] <min_move){
+				min_move = d->pc_distance[body->yPos-1][body->xPos+1];
+				next_pos[0] = body->yPos;
+				next_pos[1] = body->xPos+1;
+			}
+			if(d->pc_distance[body->yPos+1][body->xPos] <min_move){
+				min_move = d->pc_distance[body->yPos+1][body->xPos];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos;
+			}
+			if(d->pc_distance[body->yPos+1][body->xPos-1] <min_move){
+				min_move = d->pc_distance[body->yPos+1][body->xPos-1];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos-1;
+			}
+			if(d->pc_distance[body->yPos+1][body->xPos+1] <min_move){
+				min_move = d->pc_distance[body->yPos+1][body->xPos+1];
+				next_pos[0] = body->yPos+1;
+				next_pos[1] = body->xPos+1;
+			}
+			return;
+		}
+	}
+/*
+	else if (smart){
+
+	}
+	else if(tele){
+
+	}
+	else{
+
+	}
+*/
+}
 
 static uint32_t adjacent_to_room(dungeon_t *d, int16_t y, int16_t x)
 {
@@ -74,7 +327,7 @@ static void dijkstra_corridor(dungeon_t *d, pair_t from, pair_t to)
     }
     initialized = 1;
   }
-  
+
   for (y = 0; y < DUNGEON_Y; y++) {
     for (x = 0; x < DUNGEON_X; x++) {
       path[y][x].cost = INT_MAX;
@@ -173,7 +426,7 @@ static void dijkstra_corridor_inv(dungeon_t *d, pair_t from, pair_t to)
     }
     initialized = 1;
   }
-  
+
   for (y = 0; y < DUNGEON_Y; y++) {
     for (x = 0; x < DUNGEON_X; x++) {
       path[y][x].cost = INT_MAX;
@@ -383,7 +636,7 @@ static int smooth_hardness(dungeon_t *d)
   fwrite(&hardness, sizeof (hardness), 1, out);
   fclose(out);
 #endif
-  
+
   /* Diffuse the vaules to fill the space */
   while (head) {
     x = head->x;
@@ -578,7 +831,7 @@ static void place_stairs(dungeon_t *d)
            (p[dim_x] = rand_range(1, DUNGEON_X - 2)) &&
            ((mappair(p) < ter_floor)                 ||
             (mappair(p) > ter_stairs)))
-      
+
       ;
     mappair(p) = ter_stairs_up;
   } while (rand_under(2, 4));
@@ -592,7 +845,7 @@ static int make_rooms(dungeon_t *d)
     ;
   d->num_rooms = i;
   d->rooms = malloc(sizeof (*d->rooms) * d->num_rooms);
-  
+
   for (i = 0; i < d->num_rooms; i++) {
     d->rooms[i].size[dim_x] = ROOM_MIN_X;
     d->rooms[i].size[dim_y] = ROOM_MIN_Y;
@@ -628,7 +881,18 @@ void render_dungeon(dungeon_t *d)
     for (p[dim_x] = 0; p[dim_x] < DUNGEON_X; p[dim_x]++) {
       if (d->pc.position[dim_x] == p[dim_x] && d->pc.position[dim_y] == p[dim_y]) {
         putchar('@');
-      } else {
+      }
+      else if(monMap[p[dim_y]][p[dim_x]]){
+    	  if(monMap[dim_y][dim_x].characteristics & TUNNELING){
+    		 putchar('7');
+    	  }
+    	  else
+    	  {
+    		  putchar('3');
+    	  }
+      }
+
+      else {
         switch (mappair(p)) {
         case ter_wall:
         case ter_wall_immutable:
@@ -933,7 +1197,7 @@ int read_rooms(dungeon_t *d, FILE *f)
 
       exit(-1);
     }
-        
+
 
     /* After reading each room, we need to reconstruct them in the dungeon. */
     for (y = d->rooms[i].position[dim_y];
@@ -1018,7 +1282,7 @@ int read_dungeon(dungeon_t *d, char *file)
 
   fread(&d->pc.position[dim_x], 1, 1, f);
   fread(&d->pc.position[dim_y], 1, 1, f);
-  
+
   read_dungeon_map(d, f);
 
   read_rooms(d, f);
@@ -1120,10 +1384,10 @@ void render_hardness_map(dungeon_t *d)
 {
   /* The hardness map includes coordinates, since it's larger *
    * size makes it more difficult to index a position by eye. */
-  
+
   pair_t p;
   int i;
-  
+
   putchar('\n');
   printf("   ");
   for (i = 0; i < DUNGEON_X; i++) {
