@@ -172,6 +172,7 @@ int main(int argc, char *argv[])
   Pc->priority =0;
   Pc->order = 1;
   numChar = 5;
+  heap_insert(&h, Pc);
 
 
 
