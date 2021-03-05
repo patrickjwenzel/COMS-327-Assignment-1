@@ -16,6 +16,10 @@
 #define DUNGEON_SAVE_FILE      "dungeon"
 #define DUNGEON_SAVE_SEMANTIC  "RLG327-" TERM
 #define DUNGEON_SAVE_VERSION   0U
+#define SMART 0x1
+#define TELEPATHIC 0x2
+#define TUNNEL 0x4
+#define ERRATIC 0x8
 
 #define mappair(pair) (d->map[pair[dim_y]][pair[dim_x]])
 #define mapxy(x, y) (d->map[y][x])
@@ -40,25 +44,39 @@ typedef struct room {
 } room_t;
 
 typedef struct pc {
-  pair_t position;
 } pc_t;
+
+
+typedef struct npc {
+	uint_8 characteristics; 		// wtf how do I make a bit
+	int type;
+} npc_t;
+
+typedef struct character{ 	// made so there can be a comparator between
+
+	uint32_t priority; 		// the first one to look at
+	uint32_t order;   		// the second column
+	uint16_t speed;			// the third column
+	struct pc *pc;
+	int isNPC = 1;
+	npc_t *npc;
+	pair_t position;
+	int speed;
+	int isAlive;
+	int xPos, yPos;
+} charac_t;
 
 typedef struct dungeon {
   uint32_t num_rooms;
   room_t *rooms;
   terrain_type_t map[DUNGEON_Y][DUNGEON_X];
-  /* Since hardness is usually not used, it would be expensive to pull it *
-   * into cache every time we need a map cell, so we store it in a        *
-   * parallel array, rather than using a structure to represent the       *
-   * cells.  We may want a cell structure later, but from a performanace  *
-   * perspective, it would be a bad idea to ever have the map be part of  *
-   * that structure.  Pathfinding will require efficient use of the map,  *
-   * and pulling in unnecessary data with each map cell would add a lot   *
-   * of overhead to the memory system.                                    */
+  int playerAlive
   uint8_t hardness[DUNGEON_Y][DUNGEON_X];
   uint8_t pc_distance[DUNGEON_Y][DUNGEON_X];
   uint8_t pc_tunnel[DUNGEON_Y][DUNGEON_X];
   pc_t pc;
+  charac_t monMap[DUNGEON_Y][DUNGEON_X]; // needs to be dynamic
+  int numChar;
 } dungeon_t;
 
 void init_dungeon(dungeon_t *d);
