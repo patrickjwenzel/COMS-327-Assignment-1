@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
   /* Quiet a false positive from valgrind. */
   memset(&d, 0, sizeof (d));
-  
+
   /* Default behavior: Seed with the time, generate a new dungeon, *
    * and don't write to disk.                                      */
   do_load = do_save = do_image = do_save_seed = do_save_image = 0;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
    * And the final switch, '--image', allows me to create a dungeon *
    * from a PGM image, so that I was able to create those more      *
    * interesting test dungeons for you.                             */
- 
+
  if (argc > 1) {
     for (i = 1, long_arg = 0; i < argc; i++, long_arg = 0) {
       if (argv[i][0] == '-') { /* All switches start with a dash */
@@ -158,10 +158,51 @@ int main(int argc, char *argv[])
 
   dijkstra(&d);
   dijkstra_tunnel(&d);
-  render_distance_map(&d);
-  render_tunnel_distance_map(&d);
-  render_hardness_map(&d);
-  render_movement_cost_map(&d);
+  //render_distance_map(&d);
+  //render_tunnel_distance_map(&d);
+  //render_hardness_map(&d);
+  //ender_movement_cost_map(&d);
+  heap_t h;
+  charac_t *Pc;
+  Pc->xPos = d.d.pc.position[dim_x]
+  Pc->yPos = d.pc.position[dim_y]
+  Pc->isAlive =1;
+  Pc->isNPC = 0;
+  Pc->speed = 10;
+  Pc->priority =0;
+  Pc->order = 1;
+  numChar = 5;
+
+
+
+
+
+  int type;
+  for(i = 0; i < d.numChar-1; i++){
+	   type = rand() & FIFTEEN;
+	   charac_t *c = malloc(sizeof(charac_t));
+	   c->priority = 0;
+       c->order = i+1;
+       c->speed = (rand() % 16) + 5;
+       c->isAlive =1;
+       c->characteristics = type;
+       c->type = type;
+       place_monsters(*d, *c);
+       heap_insert(&h, c);
+     }
+
+
+  while(d.playerAlive && numChar >1){
+	  charac_t *t = heap_remove_min(&h);
+	  if(t->isAlive){
+		  move(*d, *t);
+		  t->priority = t->priority + floor((double)(1000/t->speed));
+		  heap_insert(&h, t);
+		  render_dungeon(&d);
+	  }
+  }
+
+
 
   if (do_save) {
     if (do_save_seed) {
