@@ -22,7 +22,7 @@
 #define ERRATIC 0x8
 #define DEBUG 0
 #define USLEEP_MAX 999999
-#define FPS 3
+#define FPS 1
 
 typedef struct corridor_path {
     heap_node_t *heap_node;
@@ -70,7 +70,7 @@ typedef struct monster{ //Tunneling Monster
     uint8_t speed;
     uint8_t type;
     char rep;
-    uint8_t pc_location[2];
+    int pc_location[2];
 } mon_t;
 
 typedef struct dungeon{ //Dungeon struct
@@ -113,6 +113,59 @@ void place_monsters(dungeon_t *dungeon);
 static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters);
 static int32_t turn_cmp(const void *key, const void *with);
 void move(dungeon_t *dungeon, turn_t turn);
-int seen(uint8_t mons[2]);
-void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int tunneling, int smart);
-int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2]);
+int seen(int mons[2]);
+void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart);
+int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn);
+
+
+const char *victory =
+        "\n                                       o\n"
+        "                                      $\"\"$o\n"
+        "                                     $\"  $$\n"
+        "                                      $$$$\n"
+        "                                      o \"$o\n"
+        "                                     o\"  \"$\n"
+        "                oo\"$$$\"  oo$\"$ooo   o$    \"$    ooo\"$oo  $$$\"o\n"
+        "   o o o o    oo\"  o\"      \"o    $$o$\"     o o$\"\"  o$      \"$  "
+        "\"oo   o o o o\n"
+        "   \"$o   \"\"$$$\"   $$         $      \"   o   \"\"    o\"         $"
+        "   \"o$$\"    o$$\n"
+        "     \"\"o       o  $          $\"       $$$$$       o          $  ooo"
+        "     o\"\"\n"
+        "        \"o   $$$$o $o       o$        $$$$$\"       $o        \" $$$$"
+        "   o\"\n"
+        "         \"\"o $$$$o  oo o  o$\"         $$$$$\"        \"o o o o\"  "
+        "\"$$$  $\n"
+        "           \"\" \"$\"     \"\"\"\"\"            \"\"$\"            \""
+        "\"\"      \"\"\" \"\n"
+        "            \"oooooooooooooooooooooooooooooooooooooooooooooooooooooo$\n"
+        "             \"$$$$\"$$$$\" $$$$$$$\"$$$$$$ \" \"$$$$$\"$$$$$$\"  $$$\""
+        "\"$$$$\n"
+        "              $$$oo$$$$   $$$$$$o$$$$$$o\" $$$$$$$$$$$$$$ o$$$$o$$$\"\n"
+        "              $\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
+        "\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"$\n"
+        "              $\"                                                 \"$\n"
+        "              $\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\"$\""
+        "$\"$\"$\"$\"$\"$\"$\"$\n"
+        "                                   You win!\n\n";
+
+const char *tombstone =
+        "\n\n\n\n                /\"\"\"\"\"/\"\"\"\"\"\"\".\n"
+        "               /     /         \\             __\n"
+        "              /     /           \\            ||\n"
+        "             /____ /   Rest in   \\           ||\n"
+        "            |     |    Pieces     |          ||\n"
+        "            |     |               |          ||\n"
+        "            |     |   A. Luser    |          ||\n"
+        "            |     |               |          ||\n"
+        "            |     |     * *   * * |         _||_\n"
+        "            |     |     *\\/* *\\/* |        | TT |\n"
+        "            |     |     *_\\_  /   ...\"\"\"\"\"\"| |"
+        "| |.\"\"....\"\"\"\"\"\"\"\".\"\"\n"
+        "            |     |         \\/..\"\"\"\"\"...\"\"\""
+        "\\ || /.\"\"\".......\"\"\"\"...\n"
+        "            |     |....\"\"\"\"\"\"\"........\"\"\"\"\""
+        "\"^^^^\".......\"\"\"\"\"\"\"\"..\"\n"
+        "            |......\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"......"
+        "..\"\"\"\"\"....\"\"\"\"\"..\"\"...\"\"\".\n\n"
+        "            You're dead.  Better luck in the next life.\n\n\n";
