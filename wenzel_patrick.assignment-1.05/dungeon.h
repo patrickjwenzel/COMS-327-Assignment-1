@@ -71,6 +71,8 @@ typedef struct monster{ //Tunneling Monster
     uint8_t type;
     char rep;
     int pc_location[2];
+    int distance[MAP_Y_MAX][MAP_X_MAX];
+    uint8_t map_made;
 } mon_t;
 
 typedef struct dungeon{ //Dungeon struct
@@ -104,8 +106,13 @@ void make_dungeon(dungeon_t *dungeon);
 int find_room(dungeon_t *dungeon, int x, int y);
 char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor);
 void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]);
+void save_game(dungeon_t *dungeon, int num_stairs_placed[]);
+void load_game(dungeon_t *dungeon, int num_stairs_placed[2]);
+void make_dungeon(dungeon_t *dungeon);
+int find_room(dungeon_t *dungeon, int x, int y);
+char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor);
 static int32_t corridor_path_cmp(const void *key, const void *with);
-static void dijkstra_map(dungeon_t *dungeon, int tunneling);
+static void dijkstra_map(dungeon_t *dungeon, int tunneling, mon_t *monster);
 void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int tunneling);
 void do_maps(dungeon_t *dungeon);
 void create_monsters(dungeon_t *dungeon);
@@ -116,7 +123,8 @@ void move(dungeon_t *dungeon, turn_t turn);
 int seen(int mons[2]);
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart);
 int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn);
-
+uint8_t can_be_seen(dungeon_t *dungeon, mon_t monster, player_t player);
+int far_enough_away(dungeon_t *dungeon, int x, int y);
 
 const char *victory =
         "\n                                       o\n"

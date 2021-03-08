@@ -36,7 +36,6 @@ int main(int argc, char *argv[]){
         create_dungeon_map(&dungeon, num_stairs_placed, 0);
         do_maps(&dungeon);
         place_monsters(&dungeon);
-        print_dungeon(dungeon.dmap);
 //        static void turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters)
 
 //        turn_decider(&dungeon);
@@ -52,7 +51,6 @@ int main(int argc, char *argv[]){
             fill_dungeon(&dungeon);
             create_dungeon_map(&dungeon, num_stairs_placed, 1);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else if(!strcmp(argv[1], "--load")){ //This will load a dungeon
@@ -62,7 +60,6 @@ int main(int argc, char *argv[]){
             load_game(&dungeon, num_stairs_placed);
             create_monsters(&dungeon);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else{
@@ -79,7 +76,6 @@ int main(int argc, char *argv[]){
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
 	    }
         else if(!strcmp(argv[1], "--nummon")){ //This will load a dungeon
@@ -93,7 +89,6 @@ int main(int argc, char *argv[]){
             fill_dungeon(&dungeon);
             create_dungeon_map(&dungeon, num_stairs_placed, 1);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
 	    else{
@@ -113,7 +108,6 @@ int main(int argc, char *argv[]){
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else if((!strcmp(argv[1], "--load") && !strcmp(argv[2], "--nummon") && !strcmp(argv[4], "--save")) || (!strcmp(argv[1], "--save") && !strcmp(argv[2], "--nummon") && !strcmp(argv[4], "--load")) ){
@@ -126,7 +120,6 @@ int main(int argc, char *argv[]){
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else if((!strcmp(argv[1], "--nummon") && !strcmp(argv[3], "--load") && !strcmp(argv[4], "--save")) || (!strcmp(argv[1], "--nummon") && !strcmp(argv[3], "--save") && !strcmp(argv[4], "--load"))){
@@ -139,7 +132,6 @@ int main(int argc, char *argv[]){
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
             place_monsters(&dungeon);
-            print_dungeon(dungeon.dmap);
             do_maps(&dungeon);
         }
         else{
@@ -148,7 +140,6 @@ int main(int argc, char *argv[]){
         }
 	}
     while(turn_decider(&dungeon, turn_event, &init, num_characters)){
-        print_dungeon(dungeon.dmap);
         fflush(stdout);
         usleep(USLEEP_MAX/FPS);
     }
@@ -157,257 +148,371 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters){
-    heap_t heap;
-    int i;
-    turn_t *t;
-
-    if(!*init){
-        for(i = 0; i < num_characters; i++){
-            if(!i){
-                turn_event[i].seq = 0;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = PLAYER;
-                turn_event[i].speed = dungeon->player.speed;
-            }
-            else{
-                turn_event[i].seq = i;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = dungeon->mons[i - 1].rep;
-                turn_event[i].speed = dungeon->mons[i - 1].speed;
-            }
-        }
-        *init = 1;
-    }
-
-    heap_init(&heap, turn_cmp, NULL);
-    for(i = 0; i < num_characters; i++){
-        turn_event[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
-    }
-
-    while((t = heap_remove_min((&heap))) && dungeon->num_mons_alive > 0 && dungeon->player.alive){
-//        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
-        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
-        if(!t->seq){
-            move(dungeon, *t);
-        }
-        else{
-            if(dungeon->mons[t->seq - 1].alive){
-                move(dungeon, *t);
-            }
-        }
-
-        t->heap_node = NULL;
-        if(dungeon->player.alive) continue;
-        else break;
-    }
-    return dungeon->player.alive;
-
-}
-
+//Moving Functions
 int seen(int mons[2]){
     return mons[0] != -1 && mons[1] != -1;
 }
 
 void move(dungeon_t *dungeon, turn_t turn){
     int next_pos[2];
-    int character;
+    int character, is_room;
     if(turn.symb == PLAYER){
         return;
     }
     else{
-        if(dungeon->mons[turn.seq - 1].type & TELEPATHIC){ //Monster is telepathic
-            dungeon->mons[turn.seq - 1].pc_location[0] = dungeon->player.y_pos;
-            dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
-            if(dungeon->mons[turn.seq - 1].type & SMART){ //Monster is telepathic and smart
-                if(dungeon->mons[turn.seq - 1].type & TUNNEL){ //Monster is telepathic, smart, and can tunnel
-                    get_next_pos(dungeon, turn, next_pos, 1, 1, 1);
-                    if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
-                        while(1){
-                            // Randomly generate a number [-1, 1] for x and y direction that the monster will move
-                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
-                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
-                            if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
-                            else break;
-                        }
-                    }
-                    character = is_character(dungeon, dungeon->mons, next_pos, turn);
-                    if(character == 1){ //If the next space is a monster
-                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){ //Checks if you are in a room
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR; //If not, make the space a corridor
-                            do_maps(dungeon); //Redo distance maps
-                        }
-                        else{
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM; //If it is a room, keep the space a room
-                        }
-                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
-                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                    }
-                    else if(!character){ //If it is rock
-                        if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
-                            dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
-                            dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
-                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                            if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                                do_maps(dungeon);
-                            }
-                            else{
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                            }
-                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];// Move the character
-                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                        }
-                        else{
-                            dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
-                        }
-                    }
-                    else{
-                        return;
-                    }
+        if(dungeon->mons[turn.seq - 1].type == 0 || dungeon->mons[turn.seq - 1].type == 8){
+            while(1){
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->hardness[next_pos[0]][next_pos[1]] || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
+                else break;
+            }
+            character = is_character(dungeon, dungeon->mons, next_pos, turn);
+            is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+            if(character == 1){
+                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+//                char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor)
+                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon,dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+            }
+            else if(!character){
+                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+            }
+            else{
+                return;
+            }
+        }
+        else if(dungeon->mons[turn.seq - 1].type == 4 || dungeon->mons[turn.seq - 1].type == 12){
+            while(1){
+                // Randomly generate a number [-1, 1] for x and y direction that the monster will move
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
+                else break;
+            }
+            character = is_character(dungeon, dungeon->mons, next_pos, turn);
+            is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+            if(character == 1){ //If the next space is a monster
+                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                if(is_room == -1){ //Checks if you are in a room
+                    do_maps(dungeon); //Redo distance maps
                 }
-                else{ // Is Smart and Telepathic
-                    get_next_pos(dungeon, turn, next_pos, 1, 0, 1);
-                    if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
-                        while(1){
-                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
-                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
-                            if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == ROCK || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
-                            else break;
-                        }
+                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+            }
+            else if(!character){ //If it is rock
+                if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
+                    dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                    dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                    dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                    if(is_room == -1){ //Checks if you are in a room
+                        do_maps(dungeon); //Redo distance maps
                     }
-                    character = is_character(dungeon, dungeon->mons, next_pos, turn);
-                    if(character == 1){
-                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                        }
-                        else{
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                        }
-                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
-                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                    }
-                    else if(!character){
-                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                        }
-                        else{
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                        }
-                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
-                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                    }
-                    else{
-                        return;
-                    }
+                    dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                    dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                    dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                }
+                else{
+                    dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
                 }
             }
-            else{ // Is Telepathic but not smart
-                if(dungeon->mons[turn.seq - 1].type & TUNNEL){ //If telepathic and can tunnel
-                    get_next_pos(dungeon, turn, next_pos, 1, 1, 0);
-                    if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
-                        while(1){
-                            // Randomly generate a number [-1, 1] for x and y direction that the monster will move
-                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
-                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
-                            if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
-                            else break;
+            else{
+                return;
+            }
+        }
+        else {
+            if (dungeon->mons[turn.seq - 1].type & TELEPATHIC) { //Monster is telepathic
+                dungeon->mons[turn.seq - 1].pc_location[0] = dungeon->player.y_pos;
+                dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
+                if (dungeon->mons[turn.seq - 1].type & SMART) { //Monster is telepathic and smart
+                    if (dungeon->mons[turn.seq - 1].type & TUNNEL) { //Monster is telepathic, smart, and can tunnel
+                        get_next_pos(dungeon, turn, next_pos, 1, 1, 1);
+                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                            while (1) {
+                                // Randomly generate a number [-1, 1] for x and y direction that the monster will move
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
                         }
-                    }
-                    character = is_character(dungeon, dungeon->mons, next_pos, turn);
-                    if(character == 1){ //If the next space is a monster
-                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){ //Checks if you are in a room
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR; //If not, make the space a corridor
-                            do_maps(dungeon); //Redo distance maps
-                        }
-                        else{
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM; //If it is a room, keep the space a room
-                        }
-                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
-                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                    }
-                    else if(!character){ //If it is rock
-                        if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
-                            dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
-                            dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1){ //If the next space is a monster
                             dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                            if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                                do_maps(dungeon);
+                            if(is_room == -1){ //Checks if you are in a room
+                                do_maps(dungeon); //Redo distance maps
                             }
-                            else{
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                            }
-                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];// Move the character
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
                             dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
                         }
-                        else{
-                            dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
-                        }
-                    }
-                    else{
-                        return;
-                    }
-                }
-                else{ //Is only telepathic and possibly erratic
-                    get_next_pos(dungeon, turn, next_pos, 1, 0, 0);
-                    if(dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE){
-                        while(1){
-                            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
-                            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
-                            if((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->hardness[next_pos[0]][next_pos[1]] || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE) continue;
-                            else break;
-                        }
-                    }
-                    character = is_character(dungeon, dungeon->mons, next_pos, turn);
-                    if(character == 1 && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){
-                        dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                        if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
-                        }
-                        else{
-                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
-                        }
-                        dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
-                        dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-                    }
-                    else if(!character){
-                        if(!(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){
-                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                            if(find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos) == -1){
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = CORRIDOR;
+                        else if(!character){ //If it is rock
+                            if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
+                                dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                                dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                                if(is_room == -1){ //Checks if you are in a room
+                                    do_maps(dungeon); //Redo distance maps
+                                }
+                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
                             }
                             else{
-                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = ROOM;
+                                dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
                             }
+                        }
+                        else {
+                            return;
+                        }
+                    }
+                    else { // Is Smart and Telepathic
+                        get_next_pos(dungeon, turn, next_pos, 1, 0, 1);
+                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                            while (1) {
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == ROCK || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
+                        }
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos,dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1){
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+//                char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor)
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon,dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
                             dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
                             dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
                         }
+                        else if(!character){
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                        }
+                        else {
+                            return;
+                        }
                     }
-                    else{
-                        return;
+                }
+                else { // Is Telepathic but not smart
+                    if (dungeon->mons[turn.seq - 1].type & TUNNEL) { //If telepathic and can tunnel
+                        get_next_pos(dungeon, turn, next_pos, 1, 1, 0);
+                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                            while (1) {
+                                // Randomly generate a number [-1, 1] for x and y direction that the monster will move
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
+                        }
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1){ //If the next space is a monster
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                            if(is_room == -1){ //Checks if you are in a room
+                                do_maps(dungeon); //Redo distance maps
+                            }
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                        }
+                        else if(!character){ //If it is rock
+                            if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
+                                dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                                dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                                if(is_room == -1){ //Checks if you are in a room
+                                    do_maps(dungeon); //Redo distance maps
+                                }
+                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                            }
+                            else{
+                                dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
+                            }
+                        }
+                        else {
+                            return;
+                        }
+                    } else { //Is only telepathic and possibly erratic
+                        get_next_pos(dungeon, turn, next_pos, 1, 0, 0);
+                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                            while (1) {
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->hardness[next_pos[0]][next_pos[1]] || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
+                        }
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos,dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1 && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+//                char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor)
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon,dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                        }
+                        else if(!character){
+                            if (!(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)) {
+                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                            }
+                        }
+                        else {
+                            return;
+                        }
                     }
                 }
             }
-        }
-        else{ //If not Telepathic
-            if(dungeon->mons[turn.seq - 1].type & SMART){ //Monster is telepathic and smart
-                if(dungeon->mons[turn.seq - 1].type & TUNNEL) {
+            else { //If not Telepathic
+                if (dungeon->mons[turn.seq - 1].type & SMART) { //Monster is not telepathic and smart
+                    if (dungeon->mons[turn.seq - 1].type & TUNNEL) {
+                        if (can_be_seen(dungeon, dungeon->mons[turn.seq - 1], dungeon->player)) {
+                            dungeon->mons[turn.seq - 1].pc_location[0] = dungeon->player.y_pos;
+                            dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
+                            if (dungeon->player.y_pos != dungeon->mons[turn.seq - 1].pc_location[0] && dungeon->player.x_pos != dungeon->mons[turn.seq - 1].pc_location[1]) {
+                                dijkstra_map(dungeon, dungeon->mons[turn.seq - 1].type & TUNNEL,&dungeon->mons[turn.seq - 1]);
+                                dungeon->mons[turn.seq - 1].map_made = 1;
+                            }
+                        }
+                        if (!dungeon->mons[turn.seq - 1].map_made) {
+                            return;
+                        }
+                        get_next_pos(dungeon, turn, next_pos, 0, 1, 1);
+                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                            while (1) {
+                                // Randomly generate a number [-1, 1] for x and y direction that the monster will move
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
+                        }
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1){ //If the next space is a monster
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                            if(is_room == -1){ //Checks if you are in a room
+                                do_maps(dungeon); //Redo distance maps
+                            }
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                        }
+                        else if(!character){ //If it is rock
+                            if(dungeon->hardness[next_pos[0]][next_pos[1]] - 85 <= 0){ //Can the monster destroy this rock
+                                dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
+                                dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
+                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                                if(is_room == -1){ //Checks if you are in a room
+                                    do_maps(dungeon); //Redo distance maps
+                                }
+                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
+                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                            }
+                            else{
+                                dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
+                            }
+                        }
+                        else {
+                            return;
+                        }
+                    }
+                    else { //Monster is smart
+                        int mon_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos,dungeon->mons[turn.seq - 1].y_pos);
+                        int player_room = find_room(dungeon, dungeon->player.x_pos, dungeon->player.y_pos);
+                        int same_room = !(mon_room == -1 && player_room == -1) && mon_room == player_room;
+                        if (same_room) {
+                            dungeon->mons[turn.seq - 1].pc_location[0] = dungeon->player.y_pos;
+                            dungeon->mons[turn.seq - 1].pc_location[1] = dungeon->player.x_pos;
+                            if (dungeon->player.y_pos != dungeon->mons[turn.seq - 1].pc_location[0] && dungeon->player.x_pos != dungeon->mons[turn.seq - 1].pc_location[1]) {
+                                dijkstra_map(dungeon, dungeon->mons[turn.seq - 1].type & TUNNEL,&dungeon->mons[turn.seq - 1]);
+                                dungeon->mons[turn.seq - 1].map_made = 1;
+                            }
+                        }
+                        get_next_pos(dungeon, turn, next_pos, 1, 0, 0);
+                        if ((dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) || !same_room) {
+                            while (1) {
+                                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
+                                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
+                                if ((next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos) || dungeon->hardness[next_pos[0]][next_pos[1]] || dungeon->dmap[next_pos[0]][next_pos[1]] == TOP || dungeon->dmap[next_pos[0]][next_pos[1]] == SIDE)
+                                    continue;
+                                else break;
+                            }
+                        }
+                        if (!dungeon->mons[turn.seq - 1].map_made) {
+                            return;
+                        }
+                        character = is_character(dungeon, dungeon->mons, next_pos, turn);
+                        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos,dungeon->mons[turn.seq - 1].y_pos);
+                        if(character == 1 && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){
+                            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+//                char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor)
+                            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon,dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                            dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                        }
+                        else if(!character){
+                            if (!(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)) {
+                                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
+                                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
+                                dungeon->mons[turn.seq - 1].x_pos = next_pos[1];
+                                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+                            }
+                        }
+                        else {
+                            return;
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+uint8_t can_be_seen(dungeon_t *dungeon, mon_t monster, player_t player){
+    int mon_room = find_room(dungeon, monster.x_pos, monster.y_pos);
+    int player_room = find_room(dungeon, player.x_pos, player.y_pos);
+
+    if(!(mon_room == -1 && player_room == -1) && mon_room == player_room){
+        return 1;
+    }
+
+    int x, y;
+    for(y = monster.y_pos - 5; (y <= monster.y_pos + 5) && (y > 0) && (y < MAP_Y_MAX - 1); y++){
+        for(x = monster.x_pos - 5; (x <= monster.x_pos + 5) && (x > 0) && (x < MAP_X_MAX - 1); x++){
+            if(x == player.x_pos && y == player.y_pos){
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn){
     int i;
     for(i = 0; i < dungeon->num_mons + 1; i++){
-        if((next_pos[0] == dungeon->mons[i - 1].y_pos && next_pos[1] == dungeon->mons[i - 1].x_pos) && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){ //If the next space is a monster, kill the monster
-            mons[i - 1].alive = 0;
+        if((next_pos[0] == dungeon->mons[!i ? i : i - 1].y_pos && next_pos[1] == dungeon->mons[!i ? 0 : i - 1].x_pos) && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){ //If the next space is a monster, kill the monster
+            mons[!i ? 0 : i - 1].alive = 0;
             dungeon->num_mons_alive--;
             return 1;
         }
@@ -421,8 +526,47 @@ int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn)
 
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart){
     int min;
-    int player_x_position, player_y_position;
-    if(tunneling){//If the monster tunnels
+    if(!telepathic && smart){
+        min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
+        next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+        next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Up and left
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Left
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Down and left
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos] < min){ // Down
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Down and right
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Right
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+        if(dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Up and right
+            min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+    }
+    else if(tunneling){//If the monster tunnels
         if(telepathic && smart){ //If it is also smart
             min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
@@ -470,27 +614,11 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepath
         else if(!smart){ //If it can tunnel but it is not smart
             if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0){ //Player is below
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
-                if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0){ // Player is below and to the right
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
-                }
-                else if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos > 0){// Player is below and to the left
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
-                }
-                else{
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
-                }
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
             }
             else if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos > 0){ // Player is above
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
-                if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0){ // Player is below and to the right
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
-                }
-                else if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos > 0){// Player is below and to the left
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
-                }
-                else{
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
-                }
+                next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
             }
             else if(dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0){ // Player is to the right
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
@@ -548,34 +676,10 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepath
             next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
             if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0){ //Player is below
-                if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1]){ // Player is below and to the right
-                    next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
-                }
-                else if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos > 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1]){// Player is below and to the left
-                    next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
-                }
-                else{ //Player is below
-                    if(!dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos]){
-                        next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
-                    }
-                }
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
             }
             else if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos > 0){ // Player is above
-                if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1]){ // Player is above and to the right
-                    next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
-                }
-                else if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos > 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1]){// Player is above and to the left
-                    next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
-                    next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
-                }
-                else{
-                    if(!dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]){ // Player is above
-                        next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
-                    }
-                }
+                next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
             }
             else if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1]){ // Player is to the right
                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
@@ -589,10 +693,68 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepath
     }
 }
 
+//Turn deciding functions
+static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters){
+    heap_t heap;
+    int i;
+    turn_t *t;
+
+    if(!*init){
+        for(i = 0; i < num_characters; i++){
+            if(!i){
+                turn_event[i].seq = 0;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = PLAYER;
+                turn_event[i].speed = dungeon->player.speed;
+            }
+            else{
+                turn_event[i].seq = i;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = dungeon->mons[i - 1].rep;
+                turn_event[i].speed = dungeon->mons[i - 1].speed;
+            }
+        }
+        *init = 1;
+    }
+
+    heap_init(&heap, turn_cmp, NULL);
+    for(i = 0; i < num_characters; i++){
+        turn_event[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
+    }
+
+    while((t = heap_remove_min((&heap))) && dungeon->num_mons_alive > 0 && dungeon->player.alive){
+//        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
+        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
+        if(!t->seq){
+            print_dungeon(dungeon->dmap);
+            move(dungeon, *t);
+        }
+        else{
+            if(dungeon->mons[t->seq - 1].alive){
+                move(dungeon, *t);
+            }
+        }
+
+        t->heap_node = NULL;
+        if(dungeon->player.alive) continue;
+        else break;
+    }
+    return dungeon->player.alive;
+}
+
+static int32_t turn_cmp(const void *key, const void *with) {
+    int32_t ret = ((turn_t *) key)->next_turn - ((turn_t *) with)->next_turn;
+    if(!ret){
+        ret = ((turn_t *) key)->seq - ((turn_t *) with)->seq;
+    }
+    return ret;
+}
+
+//Monster functions
 void create_monsters(dungeon_t *dungeon){
     int i, type;
     for(i = 0; i < dungeon->num_mons; i++){
-        type = 10;//rand() & FIFTEEN; //Randomly get characteristics, returns a number [0, 15] or [0x0000, 0x1111]
+        type = rand() & FIFTEEN; //Randomly get characteristics, returns a number [0, 15] or [0x0000, 0x1111]
         dungeon->mons[i].alive = 1;
         dungeon->mons[i].rep = monster_reps[type];
         dungeon->mons[i].speed = (rand() % 16) + 5; //Gets a number [5, 20]
@@ -613,7 +775,7 @@ void place_monsters(dungeon_t *dungeon){
                 //Get a random number anywhere in the dungeon
                 x = (rand() % (MAP_X_MAX - 2)) + 1;
                 y = (rand() % (MAP_Y_MAX - 2)) + 1;
-                if(dungeon->dmap[y][x] == PLAYER){ //Can't place on top of player. Later will add a distance factor to this
+                if(dungeon->dmap[y][x] == PLAYER && far_enough_away(dungeon, x, y)){ //Can't place on top of player. Later will add a distance factor to this
                     continue;
                 }
                 else{
@@ -625,7 +787,7 @@ void place_monsters(dungeon_t *dungeon){
                 }
             }
         }
-        // If it is a non-tunneling monster
+            // If it is a non-tunneling monster
         else{
             while(1){
                 x = (rand() % (MAP_X_MAX - 2)) + 1;
@@ -647,8 +809,208 @@ void place_monsters(dungeon_t *dungeon){
     }
 }
 
+int far_enough_away(dungeon_t *dungeon, int x, int y){
+    return sqrt((pow((double) (x - dungeon->player.x_pos), 2.0)) + (pow((double) (y - dungeon->player.y_pos), 2.0))) > 6;
+}
+
+//Path Functions
+void do_maps(dungeon_t *dungeon){
+//    printf("Non-tunneling monster map:\n");
+    int i;
+    for(i = 0; i <= dungeon->num_mons; i++){
+        if(!i){
+            dijkstra_map(dungeon, 0, NULL);
+            dijkstra_map(dungeon, 1, NULL);
+        }
+        else{
+            if(dungeon->mons[i - 1].alive && !(dungeon->mons[i - 1].type & TELEPATHIC) && dungeon->mons[i - 1].type & SMART && seen(dungeon->mons[i - 1].pc_location)){
+                dijkstra_map(dungeon, dungeon->mons[i - 1].type & TUNNEL, &dungeon->mons[i - 1]);
+            }
+        }
+    }
+
+//    print_path_map(dungeon->nt_distances, dungeon, 0);
+//    printf("Tunneling monster map:\n");
+//    static void dijkstra_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t room_array[], int num_rooms, int tunneling);
+
+//    print_path_map(dungeon->t_distances, dungeon, 1);
+}
+
+/*
+ * From Professor's code
+ */
+static int32_t corridor_path_cmp(const void *key, const void *with) {
+    return ((corridor_path_t *) key)->cost - ((corridor_path_t *) with)->cost;
+}
+
+/*
+ * Edited version of Professor's code. Works for tunneling and non-tunneling monsters
+ */
+static void dijkstra_map(dungeon_t *dungeon, int tunneling, mon_t *monster){
+    static corridor_path_t path[MAP_Y_MAX][MAP_X_MAX], *p;
+    static uint32_t init = 0;
+    heap_t heap;
+    uint32_t x, y;
+    int weight;
+    // pos[0] = y, pos[1] = x
+    if(!init){
+        for(y = 0; y < MAP_Y_MAX; y++){
+            for(x = 0; x < MAP_X_MAX; x++){
+                path[y][x].pos[0] = y;
+                path[y][x].pos[1] = x;
+            }
+        }
+        init = 1;
+    }
+
+    /*
+     * Set costs to infinity and initialize distances array to 0's
+     */
+    for(y = 0; y < MAP_Y_MAX; y++){
+        for(x = 0; x < MAP_X_MAX; x++){
+            path[y][x].cost = INT_MAX;
+            if(monster){
+                if(tunneling){
+                    monster->distance[y][x] = INT_MAX;
+                }
+                else{
+                    monster->distance[y][x] = INT_MAX;
+                }
+            }
+            else{
+                if(tunneling){
+                    dungeon->t_distances[y][x] = INT_MAX;
+                }
+                else{
+                    dungeon->nt_distances[y][x] = INT_MAX;
+                }
+            }
+        }
+    }
+
+    path[monster ? monster->pc_location[0] : dungeon->player.y_pos][monster ? monster->pc_location[1] : dungeon->player.x_pos].cost = 0;
+
+    heap_init(&heap, corridor_path_cmp, NULL);
+
+    for(y = 0; y < MAP_Y_MAX; y++){
+        for(x = 0; x < MAP_X_MAX; x++){
+            /*
+             * If it is a tunneling monster, only check if it is not the border and if not, add to the heap
+             */
+            if(tunneling){
+                path[y][x].heap_node = dungeon->hardness[y][x] != 255 ? heap_insert(&heap, &path[y][x]) : NULL;
+            }
+                /*
+                 * If not a tunneling monster, only add to the heap if it is a corridor, room, or staircase
+                 */
+            else{
+                path[y][x].heap_node = dungeon->hardness[y][x] == 0 ? heap_insert(&heap, &path[y][x]) : NULL;
+            }
+        }
+    }
+
+    while((p = heap_remove_min((&heap)))){
+        p->heap_node = NULL;
+        weight = (1 + (dungeon->hardness[p->pos[0]][p->pos[1]] / 85)); // Set the weight so that if it is a room, staircase, or corridor the weight will be one and will be 1+dungeon->hardness/85 if not
+        if(monster){
+            if(tunneling){
+                monster->distance[p->pos[0]][p->pos[1]] = p->cost;
+            }
+            else{
+                monster->distance[p->pos[0]][p->pos[1]] = p->cost;
+            }
+        }
+        else{
+            if(tunneling){
+                dungeon->t_distances[p->pos[0]][p->pos[1]] = p->cost;
+            }
+            else{
+                dungeon->nt_distances[p->pos[0]][p->pos[1]] = p->cost;
+            }
+        }
+
+        // Up
+        if((path[p->pos[0] - 1][p->pos[1]].heap_node) &&
+           (path[p->pos[0] - 1][p->pos[1]].cost > p->cost + weight)){
+            path[p->pos[0] - 1][p->pos[1]].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1]].heap_node);
+        }
+        // Up to the left
+        if((path[p->pos[0] - 1][p->pos[1] - 1].heap_node) &&
+           (path[p->pos[0] - 1][p->pos[1] - 1].cost > p->cost + weight)) {
+            path[p->pos[0] - 1][p->pos[1] - 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1] - 1].heap_node);
+        }
+        // Up to the right
+        if((path[p->pos[0] - 1][p->pos[1] + 1].heap_node) &&
+           (path[p->pos[0] - 1][p->pos[1] + 1].cost > p->cost + weight)){
+            path[p->pos[0] - 1][p->pos[1] + 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1] + 1].heap_node);
+        }
+        // Left
+        if((path[p->pos[0]][p->pos[1] - 1].heap_node) &&
+           (path[p->pos[0]][p->pos[1] - 1].cost > p->cost + weight)){
+            path[p->pos[0]][p->pos[1] - 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0]][p->pos[1] - 1].heap_node);
+        }
+        // Right
+        if((path[p->pos[0]][p->pos[1] + 1].heap_node) &&
+           (path[p->pos[0]][p->pos[1] + 1].cost > p->cost + weight)){
+            path[p->pos[0]][p->pos[1] + 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0]][p->pos[1] + 1].heap_node);
+        }
+        // Down
+        if((path[p->pos[0] + 1][p->pos[1]].heap_node) &&
+           (path[p->pos[0] + 1][p->pos[1]].cost > p->cost + weight)){
+            path[p->pos[0] + 1][p->pos[1]].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1]].heap_node);
+        }
+        //Down to the left
+        if((path[p->pos[0] + 1][p->pos[1] - 1].heap_node) &&
+           (path[p->pos[0] + 1][p->pos[1] - 1].cost > p->cost + weight)){
+            path[p->pos[0] + 1][p->pos[1] - 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1] - 1].heap_node);
+        }
+        //Down to the right
+        if((path[p->pos[0] + 1][p->pos[1] + 1].heap_node) &&
+           (path[p->pos[0] + 1][p->pos[1] + 1].cost > p->cost + weight)){
+            path[p->pos[0] + 1][p->pos[1] + 1].cost = p->cost + weight;
+            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1] + 1].heap_node);
+        }
+    }
+}
+
+/*
+ * Prints the distances map, works for both tunneling and non-tunneling monsters
+ */
+void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int tunneling){
+    int j, i;
+    for (j = 0; j < MAP_Y_MAX; j++) {
+        for (i = 0; i < MAP_X_MAX; i++) {
+            if(i == 0 || i == MAP_X_MAX - 1) putchar(SIDE);
+            else if(j == 0 || j == MAP_Y_MAX - 1) putchar(TOP);
+            else if(i == dungeon->player.x_pos && j == dungeon->player.y_pos) putchar(PLAYER);
+            else{
+                if(tunneling){
+                    printf("%d", distances[j][i] % 10);
+                }
+                else{
+                    if(dungeon->hardness[j][i] != 0) putchar(ROCK);
+                    else {
+                        if(distances[j][i] < 0 || distances[j][i] == INT_MAX) putchar('X');
+                        else printf("%d", distances[j][i] % 10);
+                    }
+                }
+            }
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+//Dungeon Creation Functions
 void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save) {
-	int i, j = 0, x, y, room_x_pos, room_y_pos, num_rooms_placed = 0, num_cycles = 0, player_placed = 0;
+    int i, j = 0, x, y, room_x_pos, room_y_pos, num_rooms_placed = 0, num_cycles = 0, player_placed = 0;
     int rooms[dungeon->num_rooms][2];
     while(num_cycles < dungeon->num_rooms || num_rooms_placed < dungeon->num_rooms){ //Will loop until all rooms have been placed
         for(i = 0; i < dungeon->num_rooms; i++){
@@ -730,9 +1092,9 @@ void create_dungeon_map(dungeon_t *dungeon, int num_stairs_placed[2], int save) 
 }
 
 void fill_dungeon(dungeon_t *dungeon){
-	int j, i;
-	for(j = 0; j < MAP_Y_MAX; j++){ //Fill the dungeon with ROCKs and line borders with | or -. Make border hardness 255 and other hardness between 1-254
-		for(i = 0; i < MAP_X_MAX; i++){
+    int j, i;
+    for(j = 0; j < MAP_Y_MAX; j++){ //Fill the dungeon with ROCKs and line borders with | or -. Make border hardness 255 and other hardness between 1-254
+        for(i = 0; i < MAP_X_MAX; i++){
             if (i == 0 || i == MAP_X_MAX - 1) {
                 dungeon->hardness[j][i] = HARDNESS_MAX;
                 dungeon->dmap[j][i] = SIDE;
@@ -745,37 +1107,37 @@ void fill_dungeon(dungeon_t *dungeon){
                 dungeon->dmap[j][i] = ROCK;
                 dungeon->hardness[j][i] = (rand() % (254 - 1)) + 1;
             }
-		}
-	}
+        }
+    }
 }
 
 room_t newRoom(int x_pos, int y_pos, int x_size, int y_size){ //Returns a new room struct with the rooms position and size
-	struct room new_room;
-	new_room.x_pos = x_pos;
-	new_room.y_pos = y_pos;
-	new_room.x_size = x_size;
-	new_room.y_size = y_size;
-	return new_room;
+    struct room new_room;
+    new_room.x_pos = x_pos;
+    new_room.y_pos = y_pos;
+    new_room.x_size = x_size;
+    new_room.y_size = y_size;
+    return new_room;
 }
 
 int is_room(dungeon_t dungeon, int room_x_pos, int room_y_pos, int rooms[][2], int i){ //Checks to see if a new room will collide with an existing room
-	int x, y;
-	for(y = room_y_pos - 1; y < room_y_pos + rooms[i][1] + 1; y++){
-		for(x = room_x_pos - 1; x < room_x_pos + rooms[i][0] + 1; x++){
-			if(dungeon.dmap[y][x] == ROOM || dungeon.dmap[y][x] == PLAYER) return 1;
-		}
-	}
-	return 0;
+    int x, y;
+    for(y = room_y_pos - 1; y < room_y_pos + rooms[i][1] + 1; y++){
+        for(x = room_x_pos - 1; x < room_x_pos + rooms[i][0] + 1; x++){
+            if(dungeon.dmap[y][x] == ROOM || dungeon.dmap[y][x] == PLAYER) return 1;
+        }
+    }
+    return 0;
 }
 
 void shortest_path(dungeon_t *dungeon, int src_x, int src_y, int dest_x, int dest_y, int num_stairs_placed[]){ //Start of the shortest path print for the corridor
-	int i;
-	int visited[MAP_X_MAX];
-	for(i = 0; i < MAP_X_MAX; i++){ //Set visited array to all false
-		visited[i] = 0;
-	}
+    int i;
+    int visited[MAP_X_MAX];
+    for(i = 0; i < MAP_X_MAX; i++){ //Set visited array to all false
+        visited[i] = 0;
+    }
 
-	modified_dfs(dungeon, src_x, src_y, dest_x, dest_y, visited, num_stairs_placed);
+    modified_dfs(dungeon, src_x, src_y, dest_x, dest_y, visited, num_stairs_placed);
 }
 
 /*
@@ -898,6 +1260,18 @@ void modified_dfs(dungeon_t *dungeon, int src_x, int src_y, int dest_x, int dest
     else return;
 }
 
+void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]){
+    int j, i;
+    for (j = 0; j < MAP_Y_MAX; j++) {
+        for (i = 0; i < MAP_X_MAX; i++) {
+            printf("%1c", dungeon[j][i]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+//Save and load functions
 void save_game(dungeon_t *dungeon, int num_stairs_placed[]){
     int i;
     char *home = getenv("HOME");
@@ -1064,183 +1438,3 @@ char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor){
     return is_corridor ? CORRIDOR : ROOM; //If it is a corridor, return #, otherwise .
 }
 
-void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]){
-    int j, i;
-    for (j = 0; j < MAP_Y_MAX; j++) {
-        for (i = 0; i < MAP_X_MAX; i++) {
-            printf("%1c", dungeon[j][i]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
-
-void do_maps(dungeon_t *dungeon){
-//    printf("Non-tunneling monster map:\n");
-    dijkstra_map(dungeon, 0);
-//    print_path_map(dungeon->nt_distances, dungeon, 0);
-//    printf("Tunneling monster map:\n");
-//    static void dijkstra_map(int distances[MAP_Y_MAX][MAP_X_MAX], uint8_t hardness[MAP_Y_MAX][MAP_X_MAX], player_t player, room_t room_array[], int num_rooms, int tunneling);
-    dijkstra_map(dungeon, 1);
-//    print_path_map(dungeon->t_distances, dungeon, 1);
-}
-
-/*
- * From Professor's code
- */
-static int32_t corridor_path_cmp(const void *key, const void *with) {
-    return ((corridor_path_t *) key)->cost - ((corridor_path_t *) with)->cost;
-}
-
-static int32_t turn_cmp(const void *key, const void *with) {
-    int32_t ret = ((turn_t *) key)->next_turn - ((turn_t *) with)->next_turn;
-    if(!ret){
-        ret = ((turn_t *) key)->seq - ((turn_t *) with)->seq;
-    }
-    return ret;
-}
-
-/*
- * Edited version of Professor's code. Works for tunneling and non-tunneling monsters
- */
-static void dijkstra_map(dungeon_t *dungeon, int tunneling){
-    static corridor_path_t path[MAP_Y_MAX][MAP_X_MAX], *p;
-    static uint32_t init = 0;
-    heap_t heap;
-    uint32_t x, y;
-    int weight;
-    // pos[0] = y, pos[1] = x
-    if(!init){
-        for(y = 0; y < MAP_Y_MAX; y++){
-            for(x = 0; x < MAP_X_MAX; x++){
-                path[y][x].pos[0] = y;
-                path[y][x].pos[1] = x;
-            }
-        }
-        init = 1;
-    }
-
-    /*
-     * Set costs to infinity and initialize distances array to 0's
-     */
-    for(y = 0; y < MAP_Y_MAX; y++){
-        for(x = 0; x < MAP_X_MAX; x++){
-            path[y][x].cost = INT_MAX;
-            if(tunneling){
-                dungeon->t_distances[y][x] = INT_MAX;
-            }
-            else{
-                dungeon->nt_distances[y][x] = INT_MAX;
-            }
-        }
-    }
-
-    path[dungeon->player.y_pos][dungeon->player.x_pos].cost = 0;
-
-    heap_init(&heap, corridor_path_cmp, NULL);
-
-    for(y = 0; y < MAP_Y_MAX; y++){
-        for(x = 0; x < MAP_X_MAX; x++){
-            /*
-             * If it is a tunneling monster, only check if it is not the border and if not, add to the heap
-             */
-            if(tunneling){
-                path[y][x].heap_node = dungeon->hardness[y][x] != 255 ? heap_insert(&heap, &path[y][x]) : NULL;
-            }
-                /*
-                 * If not a tunneling monster, only add to the heap if it is a corridor, room, or staircase
-                 */
-            else{
-                path[y][x].heap_node = dungeon->hardness[y][x] == 0 ? heap_insert(&heap, &path[y][x]) : NULL;
-            }
-        }
-    }
-
-    while((p = heap_remove_min((&heap)))){
-        p->heap_node = NULL;
-        weight = (1 + (dungeon->hardness[p->pos[0]][p->pos[1]] / 85)); // Set the weight so that if it is a room, staircase, or corridor the weight will be one and will be 1+dungeon->hardness/85 if not
-        if(tunneling){
-            dungeon->t_distances[p->pos[0]][p->pos[1]] = p->cost;
-        }
-        else{
-            dungeon->nt_distances[p->pos[0]][p->pos[1]] = p->cost;
-        }
-
-        // Up
-        if((path[p->pos[0] - 1][p->pos[1]].heap_node) &&
-           (path[p->pos[0] - 1][p->pos[1]].cost > p->cost + weight)){
-            path[p->pos[0] - 1][p->pos[1]].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1]].heap_node);
-        }
-        // Up to the left
-        if((path[p->pos[0] - 1][p->pos[1] - 1].heap_node) &&
-           (path[p->pos[0] - 1][p->pos[1] - 1].cost > p->cost + weight)) {
-            path[p->pos[0] - 1][p->pos[1] - 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1] - 1].heap_node);
-        }
-        // Up to the right
-        if((path[p->pos[0] - 1][p->pos[1] + 1].heap_node) &&
-           (path[p->pos[0] - 1][p->pos[1] + 1].cost > p->cost + weight)){
-            path[p->pos[0] - 1][p->pos[1] + 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] - 1][p->pos[1] + 1].heap_node);
-        }
-        // Left
-        if((path[p->pos[0]][p->pos[1] - 1].heap_node) &&
-           (path[p->pos[0]][p->pos[1] - 1].cost > p->cost + weight)){
-            path[p->pos[0]][p->pos[1] - 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0]][p->pos[1] - 1].heap_node);
-        }
-        // Right
-        if((path[p->pos[0]][p->pos[1] + 1].heap_node) &&
-           (path[p->pos[0]][p->pos[1] + 1].cost > p->cost + weight)){
-            path[p->pos[0]][p->pos[1] + 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0]][p->pos[1] + 1].heap_node);
-        }
-        // Down
-        if((path[p->pos[0] + 1][p->pos[1]].heap_node) &&
-           (path[p->pos[0] + 1][p->pos[1]].cost > p->cost + weight)){
-            path[p->pos[0] + 1][p->pos[1]].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1]].heap_node);
-        }
-        //Down to the left
-        if((path[p->pos[0] + 1][p->pos[1] - 1].heap_node) &&
-           (path[p->pos[0] + 1][p->pos[1] - 1].cost > p->cost + weight)){
-            path[p->pos[0] + 1][p->pos[1] - 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1] - 1].heap_node);
-        }
-        //Down to the right
-        if((path[p->pos[0] + 1][p->pos[1] + 1].heap_node) &&
-           (path[p->pos[0] + 1][p->pos[1] + 1].cost > p->cost + weight)){
-            path[p->pos[0] + 1][p->pos[1] + 1].cost = p->cost + weight;
-            heap_decrease_key_no_replace(&heap, path[p->pos[0] + 1][p->pos[1] + 1].heap_node);
-        }
-    }
-}
-
-/*
- * Prints the distances map, works for both tunneling and non-tunneling monsters
- */
-void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int tunneling){
-    int j, i;
-    for (j = 0; j < MAP_Y_MAX; j++) {
-        for (i = 0; i < MAP_X_MAX; i++) {
-            if(i == 0 || i == MAP_X_MAX - 1) putchar(SIDE);
-            else if(j == 0 || j == MAP_Y_MAX - 1) putchar(TOP);
-            else if(i == dungeon->player.x_pos && j == dungeon->player.y_pos) putchar(PLAYER);
-            else{
-                if(tunneling){
-                    printf("%d", distances[j][i] % 10);
-                }
-                else{
-                    if(dungeon->hardness[j][i] != 0) putchar(ROCK);
-                    else {
-                        if(distances[j][i] < 0 || distances[j][i] == INT_MAX) putchar('X');
-                        else printf("%d", distances[j][i] % 10);
-                    }
-                }
-            }
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
