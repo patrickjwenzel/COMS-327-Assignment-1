@@ -16,13 +16,14 @@
 #define WELL_DONE "welldone.rlg327"
 #define DUNGEON "dungeon"
 #define CHANCE 0x00000001
-#define SMART 0x1
-#define TELEPATHIC 0x2
-#define TUNNEL 0x4
-#define ERRATIC 0x8
+#define SMART 0b0001
+#define TELEPATHIC 0b0010
+#define TUNNEL 0b0100
+#define ERRATIC 0b1000
 #define DEBUG 0
 #define USLEEP_MAX 999999
 #define FPS 1
+#define MONSTER_TYPE 10
 
 typedef struct corridor_path {
     heap_node_t *heap_node;
@@ -90,6 +91,7 @@ typedef struct dungeon{ //Dungeon struct
     uint16_t num_up;
     up_t *up_stairs;
     down_t *down_stairs;
+    FILE *file;
 } dungeon_t;
 
 const char monster_reps[16] = "0123456789abcdef"; //Different types of monsters
@@ -105,7 +107,7 @@ void save_game(dungeon_t *dungeon, int num_stairs_placed[]);
 void make_dungeon(dungeon_t *dungeon);
 int find_room(dungeon_t *dungeon, int x, int y);
 char find_stairs(dungeon_t *dungeon, int x, int y, int is_corridor);
-void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]);
+void print_dungeon(dungeon_t *dungeon);
 void save_game(dungeon_t *dungeon, int num_stairs_placed[]);
 void load_game(dungeon_t *dungeon, int num_stairs_placed[2]);
 void make_dungeon(dungeon_t *dungeon);
@@ -119,7 +121,7 @@ void create_monsters(dungeon_t *dungeon);
 void place_monsters(dungeon_t *dungeon);
 static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters);
 static int32_t turn_cmp(const void *key, const void *with);
-void move(dungeon_t *dungeon, turn_t turn);
+void move_character(dungeon_t *dungeon, turn_t turn);
 int seen(int mons[2]);
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart);
 int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn);

@@ -1,7 +1,7 @@
 NUMMON =
 
 build:
-	gcc -Wall dungeon.c -lm -o dungeon.o
+	gcc -Wall dungeon.c -lm -lncurses -o dungeon.o
 	
 run: dungeon.o
 	./dungeon.o

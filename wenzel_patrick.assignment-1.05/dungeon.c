@@ -6,7 +6,7 @@
 #include <endian.h>
 #include <math.h>
 #include <unistd.h>
-
+#include <ncurses.h>
 #include "heap.c"
 #include "dungeon.h"
 
@@ -27,7 +27,10 @@ int main(int argc, char *argv[]){
     int init = 0;
     int num_characters = dungeon.num_mons + 1;
     turn_t *turn_event;
-
+    if(!(dungeon.file = fopen("./output.txt", "w"))){
+        printf("Failed to open this file\n");
+        return -1;
+    }
     if(argc == 1){ //This means that it was just normally ran and dungeon will not be saved
         turn_event = malloc(num_characters * sizeof(turn_t));
         dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
@@ -139,10 +142,14 @@ int main(int argc, char *argv[]){
             return -1;
         }
 	}
+	initscr();
+	refresh();
     while(turn_decider(&dungeon, turn_event, &init, num_characters)){
         fflush(stdout);
         usleep(USLEEP_MAX/FPS);
     }
+    endwin();
+    fclose(dungeon.file);
 	printf("%sYou faced %d monsters.\n", dungeon.player.alive ? victory : tombstone, dungeon.num_mons);
 
 	return 0;
@@ -153,7 +160,7 @@ int seen(int mons[2]){
     return mons[0] != -1 && mons[1] != -1;
 }
 
-void move(dungeon_t *dungeon, turn_t turn){
+void move_character(dungeon_t *dungeon, turn_t turn){
     int next_pos[2];
     int character, is_room;
     if(turn.symb == PLAYER){
@@ -347,7 +354,8 @@ void move(dungeon_t *dungeon, turn_t turn){
                         else {
                             return;
                         }
-                    } else { //Is only telepathic and possibly erratic
+                    }
+                    else { //Is only telepathic and possibly erratic
                         get_next_pos(dungeon, turn, next_pos, 1, 0, 0);
                         if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
                             while (1) {
@@ -392,11 +400,8 @@ void move(dungeon_t *dungeon, turn_t turn){
                                 dungeon->mons[turn.seq - 1].map_made = 1;
                             }
                         }
-                        if (!dungeon->mons[turn.seq - 1].map_made) {
-                            return;
-                        }
                         get_next_pos(dungeon, turn, next_pos, 0, 1, 1);
-                        if (dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) {
+                        if ((dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) || !dungeon->mons[turn.seq - 1].map_made) {
                             while (1) {
                                 // Randomly generate a number [-1, 1] for x and y direction that the monster will move
                                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
@@ -450,7 +455,7 @@ void move(dungeon_t *dungeon, turn_t turn){
                             }
                         }
                         get_next_pos(dungeon, turn, next_pos, 1, 0, 0);
-                        if ((dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) || !same_room) {
+                        if ((dungeon->mons[turn.seq - 1].type & ERRATIC && rand() & CHANCE) || !dungeon->mons[turn.seq - 1].map_made) {
                             while (1) {
                                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
                                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
@@ -458,9 +463,6 @@ void move(dungeon_t *dungeon, turn_t turn){
                                     continue;
                                 else break;
                             }
-                        }
-                        if (!dungeon->mons[turn.seq - 1].map_made) {
-                            return;
                         }
                         character = is_character(dungeon, dungeon->mons, next_pos, turn);
                         is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos,dungeon->mons[turn.seq - 1].y_pos);
@@ -526,7 +528,7 @@ int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn)
 
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart){
     int min;
-    if(!telepathic && smart){
+    if(!telepathic && smart && seen(dungeon->mons[turn.seq - 1].pc_location)){
         min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
         next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
         next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
@@ -675,10 +677,10 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepath
         else if(!smart){
             next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
-            if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0){ //Player is below
+            if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0 && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos]){ //Player is below
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
             }
-            else if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos > 0){ // Player is above
+            else if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos > 0 && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]){ // Player is above
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
             }
             else if((dungeon->mons[turn.seq - 1].x_pos - dungeon->player.x_pos < 0) && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1]){ // Player is to the right
@@ -726,12 +728,13 @@ static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int 
 //        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
         t->next_turn = t->next_turn + floor((double)(1000/t->speed));
         if(!t->seq){
-            print_dungeon(dungeon->dmap);
-            move(dungeon, *t);
+            print_dungeon(dungeon);
+            refresh();
+            move_character(dungeon, *t);
         }
         else{
             if(dungeon->mons[t->seq - 1].alive){
-                move(dungeon, *t);
+                move_character(dungeon, *t);
             }
         }
 
@@ -754,7 +757,7 @@ static int32_t turn_cmp(const void *key, const void *with) {
 void create_monsters(dungeon_t *dungeon){
     int i, type;
     for(i = 0; i < dungeon->num_mons; i++){
-        type = rand() & FIFTEEN; //Randomly get characteristics, returns a number [0, 15] or [0x0000, 0x1111]
+        type = MONSTER_TYPE;//rand() & FIFTEEN; //Randomly get characteristics, returns a number [0, 15] or [0x0000, 0x1111]
         dungeon->mons[i].alive = 1;
         dungeon->mons[i].rep = monster_reps[type];
         dungeon->mons[i].speed = (rand() % 16) + 5; //Gets a number [5, 20]
@@ -775,7 +778,7 @@ void place_monsters(dungeon_t *dungeon){
                 //Get a random number anywhere in the dungeon
                 x = (rand() % (MAP_X_MAX - 2)) + 1;
                 y = (rand() % (MAP_Y_MAX - 2)) + 1;
-                if(dungeon->dmap[y][x] == PLAYER && far_enough_away(dungeon, x, y)){ //Can't place on top of player. Later will add a distance factor to this
+                if(dungeon->dmap[y][x] == PLAYER || !far_enough_away(dungeon, x, y)){ //Can't place on top of player. Later will add a distance factor to this
                     continue;
                 }
                 else{
@@ -795,7 +798,7 @@ void place_monsters(dungeon_t *dungeon){
                 /*
                  * Don't place a non-tunneling monster if it is the player or is rock
                  */
-                if (dungeon->dmap[y][x] == PLAYER || dungeon->hardness[y][x] || (!dungeon->hardness[y][x] && dungeon->dmap[y][x] == ROCK)) {
+                if (dungeon->dmap[y][x] == PLAYER || dungeon->hardness[y][x] || (!dungeon->hardness[y][x] && dungeon->dmap[y][x] == ROCK) || !far_enough_away(dungeon, x, y)) {
                     continue;
                 } else {
                     dungeon->dmap[y][x] = dungeon->mons[i].rep;
@@ -987,18 +990,19 @@ void print_path_map(int distances[MAP_Y_MAX][MAP_X_MAX], dungeon_t *dungeon, int
     int j, i;
     for (j = 0; j < MAP_Y_MAX; j++) {
         for (i = 0; i < MAP_X_MAX; i++) {
-            if(i == 0 || i == MAP_X_MAX - 1) putchar(SIDE);
-            else if(j == 0 || j == MAP_Y_MAX - 1) putchar(TOP);
-            else if(i == dungeon->player.x_pos && j == dungeon->player.y_pos) putchar(PLAYER);
+            if(i == 0 || i == MAP_X_MAX - 1) mvaddch(j, i, SIDE);// putchar(SIDE);
+            else if(j == 0 || j == MAP_Y_MAX - 1) mvaddch(j, i, TOP);// putchar(TOP);
+            else if(i == dungeon->player.x_pos && j == dungeon->player.y_pos) mvaddch(j, i, PLAYER);// putchar(PLAYER);
             else{
                 if(tunneling){
-                    printf("%d", distances[j][i] % 10);
+//                    printf("%d", distances[j][i] % 10);
+                    mvaddch(j, i, distances[j][i] % 10);
                 }
                 else{
-                    if(dungeon->hardness[j][i] != 0) putchar(ROCK);
+                    if(dungeon->hardness[j][i] != 0) mvaddch(j, i, ROCK);// putchar(ROCK);
                     else {
-                        if(distances[j][i] < 0 || distances[j][i] == INT_MAX) putchar('X');
-                        else printf("%d", distances[j][i] % 10);
+                        if(distances[j][i] < 0 || distances[j][i] == INT_MAX) mvaddch(j, i, 'X');  // putchar('X');
+                        else mvaddch(j, i, distances[j][i] % 10); //printf("%d", distances[j][i] % 10);
                     }
                 }
             }
@@ -1260,15 +1264,17 @@ void modified_dfs(dungeon_t *dungeon, int src_x, int src_y, int dest_x, int dest
     else return;
 }
 
-void print_dungeon(char dungeon[MAP_Y_MAX][MAP_X_MAX]){
+void print_dungeon(dungeon_t *dungeon){
     int j, i;
     for (j = 0; j < MAP_Y_MAX; j++) {
         for (i = 0; i < MAP_X_MAX; i++) {
-            printf("%1c", dungeon[j][i]);
+            mvaddch(j, i, dungeon->dmap[j][i]);//printf("%1c", dungeon[j][i]);
+            fputc(dungeon->dmap[j][i], dungeon->file);
         }
-        printf("\n");
+        fputc('\n', dungeon->file);
     }
-    printf("\n");
+    fputc('\n', dungeon->file);
+    fputc('\n', dungeon->file);
 }
 
 //Save and load functions
