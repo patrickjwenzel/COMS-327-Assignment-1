@@ -22,7 +22,7 @@
 #define ERRATIC 0b1000
 #define DEBUG 0
 #define USLEEP_MAX 999999
-#define FPS 1
+#define FPS 3
 #define MONSTER_TYPE 10
 
 typedef struct corridor_path {
@@ -86,13 +86,14 @@ typedef struct dungeon{ //Dungeon struct
     room_t *rooms; //Array of rooms
     mon_t *mons; //Array of monsters
     uint32_t num_mons; //Number of monsters in the dungeon
-    uint32_t num_mons_alive; //Number of alive monsters in the dungeon
     uint16_t num_down;
     uint16_t num_up;
     up_t *up_stairs;
     down_t *down_stairs;
     FILE *file;
     uint8_t quit;
+    uint8_t delete;
+    int total_monsters_faced;
 } dungeon_t;
 
 const char monster_reps[16] = "0123456789abcdef"; //Different types of monsters
@@ -131,16 +132,18 @@ int far_enough_away(dungeon_t *dungeon, int x, int y);
 void display_monsters(dungeon_t *dungeon);
 void clear_dungeon(dungeon_t *dungeon);
 void print_help(dungeon_t *dungeon);
+void delete_dungeon(dungeon_t *dungeon, turn_t turn[], int *init, int *num_characters);
+int get_num_alive_monsters(dungeon_t *dungeon);
 
 const char *keys[17] = {
-        "7 or y moves your character up one and one left",
-        "8 or k moves your character one up",
-        "9 or u moves your character one up and one right",
-        "6 or l moves your character one right",
-        "3 or n moves your character one down and one right",
-        "2 or j moves your character one down",
-        "1 or b moves your character one down and one left",
-        "4 or h moves your character one left",
+        "7/y/Home moves your character up one and one left",
+        "8/k/Up Arrow moves your character one up",
+        "9/u/Page Up moves your character one up and one right",
+        "6/l/Right Arrow moves your character one right",
+        "3/n/Dwn Page moves your character one down and one right",
+        "2/j/Down Arrow moves your character one down",
+        "1/b/End moves your character one down and one left",
+        "4/h/Left Arrow moves your character one left",
         "> Attempts to go down stairs. Only works if on a down staircase",
         "< Attempts to go up stairs. Only works if on an up staircase",
         "5, space, or . Rests for a turn",
@@ -151,15 +154,6 @@ const char *keys[17] = {
         "Q quits the game",
         "? Displays all the valid inputs and what they do"
 };
-
-const char *north_south[18] = {"south", "south", "south", "south", "south", "south", "south", "south", "south", "north", "north", "north", "north", "north", "north", "north", "north", "north"};
-const char *west_east[78] = {"west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west",
-                             "west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west",
-                             "west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west", "west",
-                             "west", "west", "west", "east", "east", "east", "east", "east", "east", "east", "east", "east",
-                             "east", "east", "east", "east", "east", "east", "east", "east", "east", "east", "east", "east",
-                             "east", "east", "east", "east", "east", "east", "east", "east", "east", "east", "east", "east",
-                             "east", "east", "east", "east", "east", "east"};
 
 const char *victory =
         "\n                                       o\n"

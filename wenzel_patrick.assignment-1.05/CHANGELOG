@@ -1,3 +1,20 @@
+03-10-2021:
+    - PJW Fixed move_character() to correctly handle the player moving.
+    - PJW Fixed bug where the player couldn't kill any monsters
+    - PJW Wrote delete_dungeon() which successfully frees malloced memory and generates a new dungeon
+    - PJW Fixed bug where if there were exactly 22 monsters the monster list would not display the 22nd monster.
+    - PJW Fixed dungeon.num_mons_alive bug where it wouldn't update correctly by writing get_num_alive_monsters() which counts the number of alive monsters and returns it.
+    - PJW Added feature to write dungeon after each print so that players can see after the game what the dungeon was like.
+
+03-09-2021:
+    - PJW Converted the program to use nscurses
+    - PJW Added to turn_decider() to handle input from user, displaying to them if their input was incorrect.
+    - PJW Wrote display_monsters() to display to the users the list of monsters and their location relative to the player
+    - PJW Wrote print_help() to print to the user the different commands they can use and the rules they may or may not have.
+    - PJW Wrote clear_dungeon() to clear the window for displaying the monster and help list.
+    - PJW Added to move_character() to handle how to move the player
+        - Got segmentation faults
+
 03-03-2021:
     - PJW Completed turn_decider() to successfully determine whose next turn it is.
     - PJW Wrote move() which determines where the monster will move depending on what type it is.

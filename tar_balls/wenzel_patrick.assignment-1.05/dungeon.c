@@ -283,13 +283,17 @@ static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int 
                     return 1;
                 }
                 else{
-                    mvprintw(0, 0, "Incorrect input. If you need help, use ? to list valid inputs and their rules.", move, dungeon->dmap[dungeon->player.y_pos][dungeon->player.x_pos]);
+
                     move = 'm';
                 }
 
             }while(move == 'm' || move == '?');
 
             if((next_pos[0] <= 0 || next_pos[0] >= MAP_Y_MAX - 1) || (next_pos[1] <= 0 || next_pos[1] >= MAP_X_MAX - 1) || (next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos)){
+                continue;
+            }
+            if(dungeon->hardness[next_pos[0]][next_pos[1]]){
+                mvprintw(0, 0, "You can't go through walls you silly goose! Stick to the dungeon.               ");
                 continue;
             }
             mvprintw(22, 60, "Move %c     ", move);
@@ -360,8 +364,6 @@ void move_character(dungeon_t *dungeon, turn_t turn, int next_pos[2]){
             dungeon->player.y_pos = next_pos[0];
         }
         else if(!character){ //If it is rock
-            dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
-            dungeon->hardness[dungeon->player.y_pos][dungeon->player.x_pos] = 0;
             dungeon->dmap[next_pos[0]][next_pos[1]] = PLAYER;
             dungeon->dmap[dungeon->player.y_pos][dungeon->player.x_pos] = find_stairs(dungeon, dungeon->player.x_pos, dungeon->player.y_pos, is_room == -1);
             dungeon->player.x_pos = next_pos[1]; //Move the monster

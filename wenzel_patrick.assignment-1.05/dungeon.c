@@ -17,7 +17,6 @@ int main(int argc, char *argv[]){
     dungeon.num_up = (rand() % 5) + 1; //Will place 1-5 up staircases
     dungeon.num_down = (rand() % 5) + 1; //Will place 1-5 down stair cases
     dungeon.num_mons = (rand() % 30) + 1; //Will place 1-30 monsters
-    dungeon.num_mons_alive = dungeon.num_mons;
     dungeon.up_stairs = malloc(dungeon.num_up * sizeof(up_t));
     dungeon.down_stairs = malloc(dungeon.num_down * sizeof(down_t));
     dungeon.rooms = malloc(dungeon.num_rooms * sizeof(room_t));
@@ -28,6 +27,8 @@ int main(int argc, char *argv[]){
     int num_characters = dungeon.num_mons + 1;
     turn_t *turn_event;
     dungeon.quit = 0;
+    dungeon.delete = 0;
+
     if(!(dungeon.file = fopen("./output.txt", "w"))){
         printf("Failed to open this file\n");
         return -1;
@@ -86,12 +87,11 @@ int main(int argc, char *argv[]){
 //        void load_game(dungeon_t *dungeon, int num_stairs_placed[2], room_t room_array[]);
             dungeon.num_mons = (uint16_t) atoi(argv[2]);
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
-            dungeon.num_mons_alive = dungeon.num_mons;
             num_characters = dungeon.num_mons + 1;
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
             fill_dungeon(&dungeon);
-            create_dungeon_map(&dungeon, num_stairs_placed, 1);
+            create_dungeon_map(&dungeon, num_stairs_placed, 0);
             place_monsters(&dungeon);
             do_maps(&dungeon);
         }
@@ -107,7 +107,6 @@ int main(int argc, char *argv[]){
             save_game(&dungeon, num_stairs_placed);
             dungeon.num_mons = (uint16_t) atoi(argv[4]);
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
-            dungeon.num_mons_alive = dungeon.num_mons;
             num_characters = dungeon.num_mons + 1;
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
@@ -119,7 +118,6 @@ int main(int argc, char *argv[]){
             save_game(&dungeon, num_stairs_placed);
             dungeon.num_mons = (uint16_t) atoi(argv[3]);
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
-            dungeon.num_mons_alive = dungeon.num_mons;
             num_characters = dungeon.num_mons + 1;
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
@@ -131,7 +129,6 @@ int main(int argc, char *argv[]){
             save_game(&dungeon, num_stairs_placed);
             dungeon.num_mons = (uint16_t) atoi(argv[2]);
             dungeon.mons = malloc(dungeon.num_mons * sizeof(mon_t));
-            dungeon.num_mons_alive = dungeon.num_mons;
             num_characters = dungeon.num_mons + 1;
             turn_event = malloc(num_characters * sizeof(turn_t));
             create_monsters(&dungeon);
@@ -143,21 +140,55 @@ int main(int argc, char *argv[]){
             return -1;
         }
 	}
+	dungeon.total_monsters_faced = dungeon.num_mons;
+
 	initscr();
 	raw();
 	noecho();
 	curs_set(0);
 	keypad(stdscr, TRUE);
 	refresh();
+    mvprintw(0, 0, "This is where I'd put a message....IF I HAD ONE!");
+
     while(turn_decider(&dungeon, turn_event, &init, num_characters)){
+        if(dungeon.delete){
+            dungeon.delete = 0;
+            delete_dungeon(&dungeon, turn_event, &init, &num_characters);
+        }
         fflush(stdout);
         usleep(USLEEP_MAX/FPS);
     }
     endwin();
     fclose(dungeon.file);
-	printf("%sYou faced %d monsters.\n", dungeon.player.alive && !dungeon.quit ? victory : tombstone, dungeon.num_mons);
-
+	printf("%s", dungeon.player.alive && !dungeon.quit ? victory : tombstone);
 	return 0;
+}
+
+void delete_dungeon(dungeon_t *dungeon, turn_t turn[], int *init, int *num_characters){
+    free(dungeon->up_stairs);
+    free(dungeon->down_stairs);
+    free(dungeon->rooms);
+    free(turn);
+    free(dungeon->mons);
+
+    dungeon->num_rooms = (rand() % (15 - 6 + 1)) + 6; //Generates between 6-15 rooms
+    dungeon->num_up = (rand() % 5) + 1; //Will place 1-5 up staircases
+    dungeon->num_down = (rand() % 5) + 1;
+    dungeon->up_stairs = malloc(dungeon->num_up * sizeof(up_t));
+    dungeon->down_stairs = malloc(dungeon->num_down * sizeof(down_t));
+    dungeon->rooms = malloc(dungeon->num_rooms * sizeof(room_t));
+    int num_stairs_placed[2] = {0, 0};
+    *init = 0;
+    dungeon->mons = malloc(dungeon->num_mons * sizeof(mon_t));
+    *num_characters = dungeon->num_mons + 1;
+    turn = malloc(*num_characters * sizeof(turn_t));
+    dungeon->total_monsters_faced += dungeon->num_mons;
+
+    create_monsters(dungeon);
+    fill_dungeon(dungeon);
+    create_dungeon_map(dungeon, num_stairs_placed, 0);
+    place_monsters(dungeon);
+    do_maps(dungeon);
 }
 
 //Moving Functions
@@ -165,36 +196,181 @@ int seen(int mons[2]){
     return mons[0] != -1 && mons[1] != -1;
 }
 
+static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters){
+    heap_t heap;
+    int i;
+    turn_t *t;
+    int move;
+    int next_pos[2];
+
+    if(!*init){
+        for(i = 0; i < num_characters; i++){
+            if(!i){
+                turn_event[i].seq = 0;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = PLAYER;
+                turn_event[i].speed = dungeon->player.speed;
+            }
+            else{
+                turn_event[i].seq = i;
+                turn_event[i].next_turn = 0;
+                turn_event[i].symb = dungeon->mons[i - 1].rep;
+                turn_event[i].speed = dungeon->mons[i - 1].speed;
+            }
+        }
+        *init = 1;
+    }
+
+    heap_init(&heap, turn_cmp, NULL);
+    for(i = 0; i < num_characters; i++){
+        turn_event[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
+    }
+
+    while((t = heap_remove_min((&heap))) && get_num_alive_monsters(dungeon) > 0 && dungeon->player.alive){
+//        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
+        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
+        if(!t->seq){
+            print_dungeon(dungeon);
+            refresh();
+            next_pos[0] = dungeon->player.y_pos;
+            next_pos[1] = dungeon->player.x_pos;
+            do{
+                move = getch();
+                if(move == 'Q'){
+                    dungeon->quit = 1;
+                    return 0;
+                }
+                else if(move == '5' || move == ' ' || move == '.' || move == KEY_B2){ // Rest
+                    ;
+                }
+                else if(move == 'm'){ //Display monster list
+                    display_monsters(dungeon);
+                }
+                else if(move == '7' || move == 'y' || move == KEY_HOME){ //Up->left
+                    next_pos[0] -= 1;
+                    next_pos[1] -= 1;
+                }
+                else if(move == '8' || move == 'k' || move == KEY_UP){//Up
+                    next_pos[0] -= 1;
+                }
+                else if(move == '9' || move == 'u' || move == KEY_PPAGE){//Up->Right
+                    next_pos[0] -= 1;
+                    next_pos[1] += 1;
+                }
+                else if(move == '6' || move == 'l' || move == KEY_RIGHT){//Right
+                    next_pos[1] += 1;
+                }
+                else if(move == '3' || move == 'n' || move == KEY_NPAGE){//Down->Right
+                    next_pos[0] += 1;
+                    next_pos[1] += 1;
+                }
+                else if(move == '2' || move == 'j' || move == KEY_DOWN){ //Down
+                    next_pos[0] += 1;
+                }
+                else if(move == '1' || move == 'b' || move == KEY_END){ //Down->left
+                    next_pos[0] += 1;
+                    next_pos[1] -= 1;
+                }
+                else if(move == '4' || move == 'h' || move == KEY_LEFT){ //Left
+                    next_pos[1] -= 1;
+                }
+                else if(move == '?'){
+                    print_help(dungeon);
+                }
+                else if((move == DOWN && find_stairs(dungeon, dungeon->player.x_pos, dungeon->player.y_pos, 0) == DOWN) || (move == UP && find_stairs(dungeon, dungeon->player.x_pos, dungeon->player.y_pos, 0) == UP)){
+                    heap_delete(&heap);
+                    dungeon->delete = 1;
+                    return 1;
+                }
+                else{
+
+                    move = 'm';
+                }
+
+            }while(move == 'm' || move == '?');
+
+            if((next_pos[0] <= 0 || next_pos[0] >= MAP_Y_MAX - 1) || (next_pos[1] <= 0 || next_pos[1] >= MAP_X_MAX - 1) || (next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos)){
+                continue;
+            }
+            if(dungeon->hardness[next_pos[0]][next_pos[1]]){
+                mvprintw(0, 0, "You can't go through walls you silly goose! Stick to the dungeon.               ");
+                continue;
+            }
+            mvprintw(22, 60, "Move %c     ", move);
+            move_character(dungeon, *t, next_pos);
+            print_dungeon(dungeon);
+            refresh();
+        }
+        else{
+            if(dungeon->mons[t->seq - 1].alive){
+                move_character(dungeon, *t, next_pos);
+            }
+        }
+
+        t->heap_node = NULL;
+        if(!get_num_alive_monsters(dungeon)){
+            return 0;
+        }
+        if(dungeon->player.alive) continue;
+        else break;
+    }
+    return dungeon->player.alive;
+}
+
+int get_num_alive_monsters(dungeon_t *dungeon){
+    int i, count = 0;
+    for(i = 0; i < dungeon->num_mons; i++){
+        count += dungeon->mons[i].alive;
+    }
+    return count;
+}
+
+int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn){
+    int i;
+    if(!turn.seq){
+        for(i = 0; i < dungeon->num_mons; i++){
+            if(mons[i].alive && (next_pos[0] == mons[i].y_pos && next_pos[1] == mons[i].x_pos)){
+                mons[i].alive = 0;
+                mvprintw(0, 0, "You killed a monster, way to go!                                               ");
+                refresh();
+                return 1;
+            }
+        }
+    }
+    else{
+        for(i = 0; i < dungeon->num_mons; i++){
+            if(mons[i].alive && (next_pos[0] == dungeon->mons[i].y_pos && next_pos[1] == dungeon->mons[i].x_pos) && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){ //If the next space is a monster, kill the monster
+                mons[i].alive = 0;
+                return 1;
+            }
+            else if(next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos && turn.seq){ //If it is the player, kill the player
+                dungeon->player.alive = 0;
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 void move_character(dungeon_t *dungeon, turn_t turn, int next_pos[2]){
     int character, is_room;
     if(!turn.seq){
         character = is_character(dungeon, dungeon->mons, next_pos, turn);
-        is_room = find_room(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos);
+        is_room = find_room(dungeon, dungeon->player.x_pos, dungeon->player.y_pos);
         if(character == 1){ //If the next space is a monster
-            dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-            if(is_room == -1){ //Checks if you are in a room
-                do_maps(dungeon); //Redo distance maps
-            }
-            dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
-            dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
-            dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
+            dungeon->dmap[next_pos[0]][next_pos[1]] = PLAYER;
+            dungeon->dmap[dungeon->player.y_pos][dungeon->player.x_pos] = find_stairs(dungeon, dungeon->player.x_pos, dungeon->player.y_pos, is_room == -1);
+            dungeon->player.x_pos = next_pos[1]; //Move the monster
+            dungeon->player.y_pos = next_pos[0];
         }
         else if(!character){ //If it is rock
-            if(dungeon->hardness[next_pos[0]][next_pos[1]]){ //Can the monster destroy this rock
-                dungeon->hardness[next_pos[0]][next_pos[1]] = 0;
-                dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = 0;
-                dungeon->dmap[next_pos[0]][next_pos[1]] = dungeon->mons[turn.seq - 1].rep;
-                if(is_room == -1){ //Checks if you are in a room
-                    do_maps(dungeon); //Redo distance maps
-                }
-                dungeon->dmap[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos] = find_stairs(dungeon, dungeon->mons[turn.seq - 1].x_pos, dungeon->mons[turn.seq - 1].y_pos, is_room == -1);
-                dungeon->mons[turn.seq - 1].x_pos = next_pos[1]; //Move the monster
-                dungeon->mons[turn.seq - 1].y_pos = next_pos[0];
-            }
-            else{
-                dungeon->hardness[next_pos[0]][next_pos[1]] -= 85; //Break the rock down by 85
-            }
+            dungeon->dmap[next_pos[0]][next_pos[1]] = PLAYER;
+            dungeon->dmap[dungeon->player.y_pos][dungeon->player.x_pos] = find_stairs(dungeon, dungeon->player.x_pos, dungeon->player.y_pos, is_room == -1);
+            dungeon->player.x_pos = next_pos[1]; //Move the monster
+            dungeon->player.y_pos = next_pos[0];
         }
+        dijkstra_map(dungeon, 0, NULL);
+        dijkstra_map(dungeon, 1, NULL);
     }
     else{
         if(dungeon->mons[turn.seq - 1].type == 0 || dungeon->mons[turn.seq - 1].type == 8){
@@ -540,22 +716,6 @@ uint8_t can_be_seen(dungeon_t *dungeon, mon_t monster, player_t player){
     return 0;
 }
 
-int is_character(dungeon_t *dungeon, mon_t mons[], int next_pos[2], turn_t turn){
-    int i;
-    for(i = 0; i < dungeon->num_mons + 1; i++){
-        if((next_pos[0] == dungeon->mons[!i ? i : i - 1].y_pos && next_pos[1] == dungeon->mons[!i ? 0 : i - 1].x_pos) && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){ //If the next space is a monster, kill the monster
-            mons[!i ? 0 : i - 1].alive = 0;
-            dungeon->num_mons_alive--;
-            return 1;
-        }
-        else if(next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos){ //If it is the player, kill the player
-            dungeon->player.alive = 0;
-            return -1;
-        }
-    }
-    return 0;
-}
-
 void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepathic, int tunneling, int smart){
     int min;
     if(!telepathic && smart && seen(dungeon->mons[turn.seq - 1].pc_location)){
@@ -725,115 +885,6 @@ void get_next_pos(dungeon_t *dungeon, turn_t turn, int next_pos[2], int telepath
     }
 }
 
-//Turn deciding functions
-static int turn_decider(dungeon_t *dungeon, turn_t turn_event[], int *init, int num_characters){
-    heap_t heap;
-    int i;
-    turn_t *t;
-    int move;
-    int next_pos[2];
-
-    if(!*init){
-        for(i = 0; i < num_characters; i++){
-            if(!i){
-                turn_event[i].seq = 0;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = PLAYER;
-                turn_event[i].speed = dungeon->player.speed;
-            }
-            else{
-                turn_event[i].seq = i;
-                turn_event[i].next_turn = 0;
-                turn_event[i].symb = dungeon->mons[i - 1].rep;
-                turn_event[i].speed = dungeon->mons[i - 1].speed;
-            }
-        }
-        *init = 1;
-    }
-
-    heap_init(&heap, turn_cmp, NULL);
-    for(i = 0; i < num_characters; i++){
-        turn_event[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &turn_event[i]) : NULL;
-    }
-
-    while((t = heap_remove_min((&heap))) && dungeon->num_mons_alive > 0 && dungeon->player.alive){
-//        printf("%c: %d %d %d\n", t->symb, t->next_turn, t->seq, t->speed);
-        t->next_turn = t->next_turn + floor((double)(1000/t->speed));
-        if(!t->seq){
-            print_dungeon(dungeon);
-            refresh();
-            next_pos[0] = dungeon->player.y_pos;
-            next_pos[1] = dungeon->player.x_pos;
-            do{
-                move = getch();
-                if(move == 'Q'){
-                    dungeon->quit = 1;
-                    return 0;
-                }
-                else if(move == '5' || move == ' ' || move == '.' || move == KEY_B2){ // Rest
-                    ;
-                }
-                else if(move == 'm'){ //Display monster list
-                    display_monsters(dungeon);
-                }
-                else if(move == '7' || move == 'y' || move == KEY_HOME){ //Up->left
-                    next_pos[0] -= 1;
-                    next_pos[1] -= 1;
-                }
-                else if(move == '8' || move == 'k' || move == KEY_UP){//Up
-                    next_pos[0] -= 1;
-                }
-                else if(move == '9' || move == 'u' || move == KEY_PPAGE){//Up->Right
-                    next_pos[0] -= 1;
-                    next_pos[1] += 1;
-                }
-                else if(move == '6' || move == 'l' || move == KEY_RIGHT){//Right
-                    next_pos[1] += 1;
-                }
-                else if(move == '3' || move == 'n' || move == KEY_NPAGE){//Down->Right
-                    next_pos[0] += 1;
-                    next_pos[1] += 1;
-                }
-                else if(move == '2' || move == 'j' || move == KEY_DOWN){ //Down
-                    next_pos[0] += 1;
-                }
-                else if(move == '1' || move == 'b' || move == KEY_END){ //Down->left
-                    next_pos[0] += 1;
-                    next_pos[1] -= 1;
-                }
-                else if(move == '4' || move == 'h' || move == KEY_LEFT){ //Left
-                    next_pos[1] -= 1;
-                }
-                else if(move == '?'){
-                    print_help(dungeon);
-                }
-                else{
-                    mvprintw(0, 0, "Incorrect input. If you need help, use ? to list valid inputs");
-                    move = 'm';
-                }
-
-            }while(move == 'm' || move == '?');
-
-            mvprintw(22, 60, "Move %c     ", move);
-            move_character(dungeon, *t, next_pos);
-            dungeon->player.x_pos = next_pos[1];
-            dungeon->player.y_pos = next_pos[0];
-            dijkstra_map(dungeon, 0, NULL);
-            dijkstra_map(dungeon, 1, NULL);
-        }
-        else{
-            if(dungeon->mons[t->seq - 1].alive){
-                move_character(dungeon, *t, next_pos);
-            }
-        }
-
-        t->heap_node = NULL;
-        if(dungeon->player.alive) continue;
-        else break;
-    }
-    return dungeon->player.alive;
-}
-
 void print_help(dungeon_t *dungeon){
     int i;
     int move;
@@ -858,10 +909,10 @@ void display_monsters(dungeon_t *dungeon){
                 if(dungeon->mons[i].alive){
                     int north_south = dungeon->player.y_pos - dungeon->mons[i].y_pos;
                     int west_east = dungeon->player.x_pos - dungeon->mons[i].x_pos;
-                    mvprintw(i + 1, 0, "%c, %d %s and %d %s", dungeon->mons[i].rep, abs(north_south), north_south >= 0 ? "north" : "south", abs(west_east), west_east >= 0 ? "west" : "east");
+                    mvprintw(i + 1, 0, "Monster %d. %c, %d %s and %d %s", i + 1, dungeon->mons[i].rep, abs(north_south), north_south >= 0 ? "north" : "south", abs(west_east), west_east >= 0 ? "west" : "east");
                 }
                 else{
-                    mvprintw(i + 1, 0, "%c is dead!", dungeon->mons[i].rep);
+                    mvprintw(i + 1, 0, "Monster %d. %c is dead!", i + 1, dungeon->mons[i].rep);
                 }
             }
         }
@@ -870,34 +921,36 @@ void display_monsters(dungeon_t *dungeon){
                 if(dungeon->mons[i].alive){
                     int north_south = dungeon->player.y_pos - dungeon->mons[i].y_pos;
                     int west_east = dungeon->player.x_pos - dungeon->mons[i].x_pos;
-                    mvprintw(!gt_index ? i + 1 : i - ((21 * (gt_index/21)) + ((gt_index % 21) - 1)), 0, "%c, %d %s and %d %s            ", dungeon->mons[i].rep, abs(north_south), north_south >= 0 ? "north" : "south", abs(west_east), west_east >= 0 ? "west" : "east");
+                    mvprintw(!gt_index ? i + 1 : i - ((21 * (gt_index/21)) + ((gt_index % 21) - 1)), 0, "Monster %d. %c, %d %s and %d %s            ", i + 1, dungeon->mons[i].rep, abs(north_south), north_south >= 0 ? "north" : "south", abs(west_east), west_east >= 0 ? "west" : "east");
                 }
                 else{
-                    mvprintw(!gt_index ? i + 1 : i - ((21 * (gt_index/21)) + ((gt_index % 21) - 1)), 0, "%c is dead!                 ", dungeon->mons[i].rep);
+                    mvprintw(!gt_index ? i + 1 : i - ((21 * (gt_index/21)) + ((gt_index % 21) - 1)), 0, "Monster %d. %c is dead!                 ", i + 1, dungeon->mons[i].rep);
                 }
             }
         }
         mvprintw(22, 60, "%d            ", gt_index);
-        mvprintw(23, 40, "Monster Move: %c            ", move == KEY_UP ? 'U' : move);
+        mvprintw(23, 60, "Monster Move: %c            ", move == KEY_UP ? 'U' : move == KEY_DOWN ? 'D' : move);
         refresh();
         move = getch();
         if(move == KEY_UP){
-            if(gt_index - 22 < 0){
+            if(gt_index - 21 < 0){
                 ;
             }
             else{
-                gt_index -= 22;
+                gt_index -= 21;
             }
         }
         else if(move == KEY_DOWN){
-            if(dungeon->num_mons - gt_index < 22){
+            if(dungeon->num_mons - gt_index < 21){
                 ;
             }
             else{
-                gt_index += 22;
+                gt_index += 21;
             }
         }
     }while(move != 27);
+    mvprintw(22, 60, "                           ");
+    mvprintw(23, 60, "                           ");
     print_dungeon(dungeon);
     return;
 }
@@ -1432,7 +1485,6 @@ void modified_dfs(dungeon_t *dungeon, int src_x, int src_y, int dest_x, int dest
 
 void print_dungeon(dungeon_t *dungeon){
     int j, i;
-    mvprintw(0, 0, "This is where I'd put a message....IF I HAD ONE!");
     for (j = 0; j < MAP_Y_MAX; j++) {
         for (i = 0; i < MAP_X_MAX; i++) {
             mvaddch(j + 1, i, dungeon->dmap[j][i]);//printf("%1c", dungeon[j][i]);
@@ -1440,7 +1492,7 @@ void print_dungeon(dungeon_t *dungeon){
         }
         fputc('\n', dungeon->file);
     }
-    mvprintw(j + 1, 0, "There are %d monsters, %d of which are alive", dungeon->num_mons, dungeon->num_mons_alive);
+    mvprintw(j + 1, 0, "There are %d monsters, %d of which are alive      ", dungeon->num_mons, get_num_alive_monsters(dungeon));
     mvprintw(j + 2, 0, "PC Location is (%d, %d)", dungeon->player.x_pos, dungeon->player.y_pos);
     fputc('\n', dungeon->file);
     fputc('\n', dungeon->file);
