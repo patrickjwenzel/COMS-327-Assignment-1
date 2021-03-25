@@ -10,6 +10,7 @@
 #define ROCK ' '
 #define TOP '-'
 #define SIDE '|'
+#define TELEPORT '*'
 #define FIFTEEN 0x0000000f
 #define ADVENTURE  "adventure.rlg327"
 #define HELLO "hello.rlg327"
@@ -94,6 +95,7 @@ public:
 class Dungeon{
 public:
     char dmap[MAP_Y_MAX][MAP_X_MAX];
+    char fmap[MAP_Y_MAX][MAP_X_MAX];
     uint8_t hardness[MAP_Y_MAX][MAP_X_MAX];
     int num_rooms;
     int nt_distances[MAP_Y_MAX][MAP_X_MAX]; // Non-tunneling distance map
@@ -110,6 +112,7 @@ public:
     uint8_t quit;
     uint8_t del;
     int total_monsters_faced;
+    uint8_t fow;
 };
 
 const char monster_reps[17] = "0123456789abcdef"; //Different types of monsters
@@ -150,8 +153,11 @@ void clear_dungeon(Dungeon *dungeon);
 void print_help(Dungeon *dungeon);
 void delete_dungeon(Dungeon *dungeon, Turn turn[], int *init, int *num_characters);
 int get_num_alive_monsters(Dungeon *dungeon);
+int is_open(Dungeon *dungeon, int next_pos[2]);
+void teleport(Dungeon *dungeon, int next_pos[2]);
+void add_cells_to_fow(Dungeon *dungeon);
 
-const char *keys[17] = {
+const char *keys[19] = {
         "7/y/Home moves your character up one and one left",
         "8/k/Up Arrow moves your character one up",
         "9/u/Page Up moves your character one up and one right",
@@ -168,7 +174,9 @@ const char *keys[17] = {
         "Down arrow scrolls down on the monster list (if able to",
         "Escape exits the monster list or the help screen",
         "Q quits the game",
-        "? Displays all the valid inputs and what they do"
+        "? Displays all the valid inputs and what they do",
+        "g teleports. r for random or use arrows to choose location",
+        "f Displays the whole map until f is pressed again"
 };
 
 const char *victory =
@@ -222,3 +230,33 @@ const char *tombstone =
         "            |......\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"......"
         "..\"\"\"\"\"....\"\"\"\"\"..\"\"...\"\"\".\n\n"
         "            You're dead.  Better luck in the next life.\n\n\n";
+
+const char *quit =
+        "\n\n\n"
+        "  ___    ___  ________   ___  ___   ________   _______           ________\n"
+        "  |\\  \\  /  /||\\   __  \\ |\\  \\|\\  \\ |\\   __  \\ |\\  ___ \\         |\\   __  \\   \n"
+        "  \\ \\  \\/  / /\\ \\  \\|\\  \\\\ \\  \\\\\\  \\\\ \\  \\|\\  \\\\ \\   __/|        \\ \\  \\|\\  \\ \n"
+        "   \\ \\    / /  \\ \\  \\\\\\  \\\\ \\  \\\\\\  \\\\ \\   _  _\\\\ \\  \\_|/__       \\ \\   __  \\ \n"
+        "    \\/  /  /    \\ \\  \\\\\\  \\\\ \\  \\\\\\  \\\\ \\  \\\\  \\|\\ \\  \\_|\\ \\       \\ \\  \\ \\  \\    \n"
+        "  __/  / /       \\ \\_______\\\\ \\_______\\\\ \\__\\\\ _\\ \\ \\_______\\       \\ \\__\\ \\__\\ \n"
+        " |\\___/ /         \\|_______| \\|_______| \\|__|\\|__| \\|_______|        \\|__|\\|__|\n"
+        " \\|___|/\n"
+        "________   ___  ___   ___   _________   _________   _______    ________\n"
+        "|\\   __  \\ |\\  \\|\\  \\ |\\  \\ |\\___   ___\\|\\___   ___\\|\\  ___ \\  |\\   __  \\   \n"
+        "\\ \\  \\|\\  \\\\ \\  \\\\\\  \\\\ \\  \\\\|___ \\  \\_|\\|___ \\  \\_|\\ \\   __/| \\ \\  \\|\\  \\ \n"
+        " \\ \\  \\\\\\  \\\\ \\  \\\\\\  \\\\ \\  \\    \\ \\  \\      \\ \\  \\  \\ \\  \\_|/__\\ \\   _  _\\ \n"
+        "  \\ \\  \\\\\\  \\\\ \\  \\\\\\  \\\\ \\  \\    \\ \\  \\      \\ \\  \\  \\ \\  \\_|\\ \\\\ \\  \\\\  \\|\n"
+        "   \\ \\_____  \\\\ \\_______\\\\ \\__\\    \\ \\__\\      \\ \\__\\  \\ \\_______\\\\ \\__\\\\ _\\ \n"
+        "    \\|___| \\__\\\\|_______| \\|__|     \\|__|       \\|__|   \\|_______| \\|__|\\|__|\n"
+        "          \\|__|\n"
+        "   ___    ___        ___        ________   _____ ______    _______\n"
+        "   |\\  \\  |\\  \\      |\\  \\      |\\   __  \\ |\\   _ \\  _   \\ |\\  ___ \\ \n"
+        " __\\_\\  \\_\\_\\  \\_____\\ \\  \\     \\ \\  \\|\\  \\\\ \\  \\\\\\__\\ \\  \\\\ \\   __/|\n"
+        "|\\____    ___    ____\\\\ \\  \\     \\ \\   __  \\\\ \\  \\\\|__| \\  \\\\ \\  \\_|/__\n"
+        "\\|___| \\  \\__|\\  \\___| \\ \\  \\____ \\ \\  \\ \\  \\\\ \\  \\    \\ \\  \\\\ \\  \\_|\\ \\ \n"
+        "    __\\_\\  \\_\\_\\  \\_____\\ \\_______\\\\ \\__\\ \\__\\\\ \\__\\    \\ \\__\\\\ \\_______\\ \n"
+        "   |\\____    ____   ____\\\\|_______| \\|__|\\|__| \\|__|     \\|__| \\|_______| \n"
+        "   \\|___| \\  \\__|\\  \\___| \n"
+        "         \\ \\__\\ \\ \\__\\ \n"
+        "          \\|__|  \\|__|\n"
+        "\n\nQuitting's lame.\n\n\n";

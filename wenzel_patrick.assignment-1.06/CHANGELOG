@@ -1,3 +1,8 @@
+03-24-2021:
+    - PJW Ported all code to c++
+    - PJW Changed structs into classes
+    - PJW 
+
 03-10-2021:
     - PJW Fixed move_character() to correctly handle the player moving.
     - PJW Fixed bug where the player couldn't kill any monsters

@@ -21,7 +21,7 @@ sl: dungeon.o
 ls: dungeon.o
 	./dungeon.o --load --save
 	
-monster: dungeon.o
+nummon: dungeon.o
 	./dungeon.o --nummon $(NUMMON)
 
 lsn:	dungeon.o
@@ -44,3 +44,9 @@ nls:	dungeon.o
 
 clean:
 	rm *.o
+
+debug: dungeon.o
+	valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all --log-file=debug.txt ./dungeon.o
+
+debug_nummon: dungeon.o
+	valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all --log-file=debug.txt ./dungeon.o --nummon $(NUMMON)
