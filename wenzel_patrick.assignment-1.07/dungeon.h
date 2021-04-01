@@ -16,15 +16,16 @@
 #define HELLO "hello.rlg327"
 #define WELL_DONE "welldone.rlg327"
 #define DUNGEON "dungeon"
-#define CHANCE 0x00000001
-#define SMART 0b00000001
-#define TELEPATHIC 0b00000010
-#define TUNNEL 0b00000100
-#define ERRATIC 0b00001000
-#define PASS 0b00010000
-#define PICKUP 0b00100000
-#define DESTROY 0b01000000
-#define UNIQ 0b10000000
+#define CHANCE 0x000000000000001
+#define SMART 0b000000000000001
+#define TELEPATHIC 0b000000000000010
+#define TUNNEL 0b000000000000100
+#define ERRATIC 0b000000000001000
+#define PASS 0b000000000010000
+#define PICKUP 0b000000000100000
+#define DESTROY 0b000000001000000
+#define UNIQ 0b0000000010000000
+#define BOSS 0b0000000100000000
 #define DEBUG 0
 #define USLEEP_MAX 999999
 #define FPS 3
@@ -99,7 +100,7 @@ public:
     std::string name;
     std::string desc;
     std::vector<uint8_t> color;
-    uint8_t abil;
+    uint16_t abil;
     Dice Speed;
     Dice health;
     Dice damage;
@@ -135,6 +136,9 @@ public:
         }
         if(abil & UNIQ){
             abils += "UNIQ ";
+        }
+        if(abil & BOSS){
+            abils += "BOSS";
         }
         for(int i = 0; i < (int) color.size(); i++){
             std::cout << colors[color[i]] << " ";

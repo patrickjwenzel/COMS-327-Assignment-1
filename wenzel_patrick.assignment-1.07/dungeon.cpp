@@ -344,7 +344,7 @@ int print_descriptions(){
                         getline(file, read);
                         read = read.substr(1, std::string::npos);
                         std::istringstream all_abils(read);
-                        uint8_t abil = 0b00000000;
+                        uint16_t abil = 0b0000000000000000;
 
                         while(getline(all_abils, read, ' ')){
                             if(read == std::string("SMART")){
@@ -370,6 +370,13 @@ int print_descriptions(){
                             }
                             else if(read == std::string("UNIQ")){
                                 abil |= UNIQ;
+                            }
+                            else if(read == std::string("BOSS")){
+                                abil |= BOSS;
+                            }
+                            else{
+                                std::cout << "Invalid Monster Ability: " << read << std::endl;
+                                return 1;
                             }
                             mon.abil = abil;
                         }

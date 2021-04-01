@@ -1,4 +1,7 @@
-03-26-2021:
+04-01-2021:
+    - PJW Added BOSS parse
+
+03-31-2021:
     - PJW Wrote print_descriptions() which reads in the text file and parses through it while creating Monster class objects and adding that to the monster list
     - PJW Added to the Monster class to have attributes for its name, description, color, speed, abilities, hitpoints, attack damage, symbol, and rarity
     - PJW Created the Dice class to handle dice rolls in the next assignment.
