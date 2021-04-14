@@ -938,7 +938,9 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                     mvprintw(0, 0, "%s", spaces);
                     mvprintw(0, 0, "You selected to wear the item in slot %d", item_to_wear);
                     refresh();
-                    int i;
+                    int i, index_of_equip;
+                    Item temp_item = dungeon->player.carrying[item_to_wear];
+
                 }
                 else{
                     move = 'm';
@@ -1031,45 +1033,45 @@ void teleport(Dungeon *dungeon, int next_pos[2]){
     while(1){
         move = getch();
 
-        if(move == KEY_UP){
+        if(move == KEY_UP && (next_pos[0] - 1 > 0)){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[0]--;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_DOWN){
+        else if(move == KEY_DOWN && (next_pos[0] + 1 < (MAP_Y_MAX - 1))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[0]++;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_LEFT){
+        else if(move == KEY_LEFT && (next_pos[1] - 1 > 0)){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]--;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_RIGHT){
+        else if(move == KEY_RIGHT && (next_pos[1] + 1 < (MAP_X_MAX - 1))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]++;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_PPAGE){
+        else if(move == KEY_PPAGE && ((next_pos[1] + 1 < (MAP_X_MAX - 1)) && (next_pos[0] - 1 > 0))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]++;
             next_pos[0]--;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_NPAGE){
+        else if(move == KEY_NPAGE && ((next_pos[1] + 1 < (MAP_X_MAX - 1)) && (next_pos[0] + 1 < (MAP_Y_MAX - 1)))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]++;
             next_pos[0]++;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_END){
+        else if(move == KEY_END && ((next_pos[1] - 1 > 0) && (next_pos[0] + 1 < (MAP_Y_MAX - 1)))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]--;
             next_pos[0]++;
             mvaddch(next_pos[0] + 1, next_pos[1], TELEPORT);
         }
-        else if(move == KEY_HOME){
+        else if(move == KEY_HOME && ((next_pos[1] - 1 > 0) && (next_pos[0] - 1 > 0))){
             mvaddch(next_pos[0] + 1, next_pos[1], dungeon->fow ? dungeon->fmap[next_pos[0]][next_pos[1]] : dungeon->dmap[next_pos[0]][next_pos[1]]);
             next_pos[1]--;
             next_pos[0]--;
