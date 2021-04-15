@@ -37,3 +37,8 @@ assignment1.08:
 Patrick Wenzel pwenzel@iastate.edu
 
 This program succesfully for the most part adds monsters and items to the map and displays them using colors. If a monster has more than one color it chooses a random color each turn to display. Monsters and the player can walk over items but cannot pick them up. I am having an issue where if a monster or item is inline with the player, the color won't display and I can't figure out why that is happening. It is happening in my is_monster_or_item() function I do know that.
+
+assignment1.09:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully implements item usage and combat. The player can see now at the bottom how much health and speed they have and when they are combating with the monster, the monster's health, damage done, and health left are displayed at the top. To combat, just run into the monster. The player can pick up items, wear them (which updates their speed), take them off (which also updates their speed), drop, and can delete them from the dungeon. Dice rolls now work properly too. Players can list their carry inventory, equipped inventory, inspect an item, and inspect monsters. Please look at CHANGELOG for directions on how to do these commands.

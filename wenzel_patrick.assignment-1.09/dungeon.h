@@ -31,6 +31,7 @@
 #define FPS 3
 #define MONSTER_TYPE 10
 #define DESC 1
+#define ESC 27
 
 std::vector<std::string> colors = {"BLACK", "BLUE", "GREEN", "CYAN", "RED", "MAGENTA", "YELLOW", "WHITE"};
 
@@ -106,7 +107,7 @@ public:
     Dice Damage;
     int rrty;
     std::string abils;
-    uint8_t health;
+    int health;
 
     void print_monster(){
         std::cout << "Name: " << name << std::endl;
@@ -224,9 +225,11 @@ public:
     uint8_t x_pos;
     uint8_t y_pos;
     uint8_t alive;
-    uint8_t speed;
+    int speed;
     Item equipped[12];
     Item carrying[10];
+    Dice damage;
+    int hp;
 };
 
 class Dungeon{
@@ -290,7 +293,6 @@ uint8_t can_be_seen(Dungeon *dungeon, Monster monster, Player player);
 int far_enough_away(Dungeon *dungeon, int x, int y);
 void display_monsters(Dungeon *dungeon);
 void clear_dungeon(Dungeon *dungeon);
-void print_help(Dungeon *dungeon);
 void delete_dungeon(Dungeon *dungeon, int *init, int *num_characters);
 int get_num_alive_monsters(Dungeon *dungeon);
 int is_open(Dungeon *dungeon, int next_pos[2]);
@@ -306,33 +308,19 @@ int is_item(Dungeon *dungeon, int x, int y);
 void print_inventory(Dungeon *dungeon);
 Item get_blank_item(Dungeon dungeon, int blank);
 void print_equipped(Dungeon *dungeon);
+int get_equip_index(char input);
+void select_monster(Dungeon *dungeon, int next_pos[2]);
+int update_speed(Dungeon *dungeon);
+int do_combat(Dungeon *dungeon, int mon_index, int player_attack);
+int get_damage(Dungeon *dungeon);
+int roll(Dice dice);
 
-const char spaces[78] = "                                                                             ";
+const int dirs[8][2]= {-1, 0, -1, 1, 0, 1, 1, 1, 1, 0, 1, -1, 0, -1, -1, -1};
+
+const char spaces[80] = "                                                                               ";
 
 const char *equip_cats[12] = {"WEAPON", "OFFHAND", "RANGED", "LIGHT", "ARMOR", "HELMET", "CLOAK", "GLOVES", "BOOTS", "AMULET", "LH RING", "RH RING"};
 const char *equip_slots = "abcdefghijkl";
-
-const char *keys[19] = {
-        "7/y/Home moves your character up one and one left",
-        "8/k/Up Arrow moves your character one up",
-        "9/u/Page Up moves your character one up and one right",
-        "6/l/Right Arrow moves your character one right",
-        "3/n/Dwn Page moves your character one down and one right",
-        "2/j/Down Arrow moves your character one down",
-        "1/b/End moves your character one down and one left",
-        "4/h/Left Arrow moves your character one left",
-        "> Attempts to go down stairs. Only works if on a down staircase",
-        "< Attempts to go up stairs. Only works if on an up staircase",
-        "5, space, or . Rests for a turn",
-        "m displays a list of all the monsters",
-        "Up arrow scrolls up on the monster list (if able to)",
-        "Down arrow scrolls down on the monster list (if able to",
-        "Escape exits the monster list or the help screen",
-        "Q quits the game",
-        "? Displays all the valid inputs and what they do",
-        "g teleports. r for random or use arrows to choose location",
-        "f Displays the whole map until f is pressed again"
-};
 
 const char *victory =
         "\n                                       o\n"
