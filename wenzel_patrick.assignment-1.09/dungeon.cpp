@@ -1159,8 +1159,26 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                         input = getch();
                         item_to_delete = input - '0';
                         if (item_to_delete < 10 && item_to_delete >= 0) {
-                            dungeon->player.carrying[item_to_delete] = get_blank_item(*dungeon, 1);
-                            deleted = 1;
+                            clear_dungeon(dungeon);
+                            attron(COLOR_PAIR(5));
+                            mvprintw(5, 0, "ARE YOU SURE YOU WANT TO DELETE %s?", dungeon->player.carrying[item_to_delete].name.c_str());
+                            mvprintw(6, 0, "ENTER y for yes, n for no. CASE SENSITIVE");
+                            attroff(COLOR_PAIR(5));
+                            int decision;
+                            while(1){
+                                decision = getch();
+                                if(decision != 'y' && decision != 'n'){
+                                    mvprintw(0, 0, "Please Enter y, n. (y's are for yes, n's are no");
+                                }
+                                else{
+                                    break;
+                                }
+                            }
+                            if(decision == 'y'){
+                                dungeon->player.carrying[item_to_delete] = get_blank_item(*dungeon, 1);
+                                deleted = 1;
+                            }
+
                         } else {
                             mvprintw(0, 0, "%s", spaces);
                             mvprintw(0, 0, "Please try again but enter a valid carry slot.");
