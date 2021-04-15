@@ -1,3 +1,39 @@
+04-15-2021:
+    - PJW wrote update_speed() to update the player's speed whenever they take off or wear an item
+    - PJW wrote do_combat which handles when a player attacks a monster and vice versa
+    - PJW wrote get_damage() which gets the total damage by rolling the player's dice for equipment slots and adding those values up. Only rolls the monster's damage dice
+    - PJW wrote roll() which rolls the dice correctly
+    - PJW added control for expunging an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The user is then prompted asking if they are sure they want to expunge this item and if so, the item is deleted from the game. Otherwise, returns to the game.
+    - PJW added control for looking at a monster where they can move a cursor, select a monster, and its description is displayed.
+    - PJW added functionality where monsters can't kill each other, they only swap positions.
+    - Controls:
+        - w is to wear an item
+        - t is to take off an item
+        - d is to drop an item
+        - x is to expunge an item
+        - i is to list the PC carrying inventory
+        - e is to list the PC equipped inventory
+        - I is to inspect an item
+        - L is to select a monster
+            - Press t to select monster you want to learn about
+    - Unsolvable bugs:
+        - Monsters and items that are inline with the PC at any point on the map (straight left, right, up, or down), only display white and not their color
+        - Sometimes LIGHT items will be picked up and placed in inventory, but you can still see the item on the map and pick it up and then weird symbols appear in the inventory list
+
+04-14-2021:
+    - PJW wrote get_equip_index() to get the index of the equipped inventory when the user enters a letter for which slot they are choosing
+    - PJW added control for wearing an item where the carrying inventory is displayed, takes the user's input and checks if the equipment slot is valid and empty. The user will wear the selected item anyway but if there is already an item of that type there already, it will swap the two items
+    - PJW added control for taking off an item where the equipped inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. If there is an open carry slot, the user will take off the item. Otherwise, nothing happens
+    - PJW added control for dropping an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The item will then be dropped onto a neighboring open cell (does not have a monster, stair, or item in its space)
+    - PJW added control for inspecting an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The menu will then disappear and the item's description is displayed.
+
+04-13-2021:
+    - PJW added a carrying inventory, equipped inventory, damage dice, and hp to the player
+    - PJW wrote print_inventory() to print the player's carrying inventory and let's them escape by hitting any key
+    - PJW wrote get_blank_item() to return a blank item to the user's carry or equipment slot
+    - PJW wrote print_equipped() to print the player's carrying inventory and let's them escape by hitting any key
+    - PJW added controls for printing the carrying and equipped inventories to turn_decider
+
 04-06-2021:
     - PJW Changed monster and turn array into a vector due to issues with bad_allocs (works fine now)
     - PJW wrote is_monster_or_item() to tell if the coordinate printing is an item or a monster
