@@ -11,8 +11,11 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <cstdlib>
+#include <ctime>
 #include "heap.c"
 #include "dungeon.h"
+
 
 int main(int argc, char *argv[]){
     srand(time(NULL));
@@ -35,11 +38,13 @@ int main(int argc, char *argv[]){
     dungeon.fow = 1;
     parse_descriptions(&dungeon);
     dungeon.boss_killed = 0;
-    dungeon.player.hp = 255;
+    dungeon.player.hp = 1000;
     dungeon.player.damage.base = 0;
     dungeon.player.damage.number = 1;
     dungeon.player.damage.sides = 4;
     dungeon.num_mons = (uint32_t) 2;
+    dungeon.player.is_infected = 0;
+    dungeon.player.infect_amount = 0;
 
     if(!(dungeon.file = fopen("./output.txt", "w"))){
         std::cout << "Failed to open this file\n";
@@ -200,12 +205,14 @@ int main(int argc, char *argv[]){
         dungeon.player.equipped[ij] = get_blank_item(dungeon, 1);
     }
     dungeon.num_mons = (uint32_t) 2;
+    num_characters = dungeon.num_mons + 1;
     try{
         while(turn_decider(&dungeon, &init, num_characters)){
             if(dungeon.del){
                 dungeon.del = 0;
                 delete_dungeon(&dungeon, &init, &num_characters);
             }
+
             fflush(stdout);
             usleep(USLEEP_MAX/FPS);
         }
@@ -832,16 +839,26 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
         dungeon->turn[i].heap_node = (!i || dungeon->mons[i - 1].alive) ? heap_insert(&heap, &dungeon->turn[i]) : NULL;
     }
 
+
     while(((t = (Turn*) heap_remove_min(&heap))) && ((dungeon->player.alive && get_num_alive_monsters(dungeon) > 0) || (!get_num_alive_monsters(dungeon) && !dungeon->boss_killed && dungeon->player.alive))){
         t->next_turn = t->next_turn + floor((double)(1000/t->speed));
+        refresh();
         if(!t->seq){
             print_dungeon(dungeon);
             refresh();
+            if(dungeon->player.is_infected){
+                attron(COLOR_PAIR(GREEN));
+                mvprintw(0, 0, "%s", spaces);
+                mvprintw(0, 0, "You are infected! Find a vaccine before you die");
+                attroff(COLOR_PAIR(GREEN));
+                refresh();
+            }
             next_pos[0] = dungeon->player.y_pos;
             next_pos[1] = dungeon->player.x_pos;
             do{
                 tport = 0;
                 move = getch();
+
                 if(move == 'Q'){
                     heap_delete(&heap);
                     dungeon->quit = 1;
@@ -959,8 +976,6 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                     do{
                         input = getch();
                         item_to_wear = input - '0';
-                        mvprintw(0, 0, "%s", spaces);
-                        mvprintw(0, 0, "%d", input);
                         refresh();
                         if(item_to_wear < 10 && item_to_wear >= 0){
                             mvprintw(0, 0, "%s", spaces);
@@ -1044,6 +1059,34 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                                             continue;
                                         }
                                     }
+                                }
+                            }
+                            else if(temp_item.type == "FLASK"){
+                                if(!dungeon->player.is_infected){
+                                    clear_dungeon(dungeon);
+                                    attron(COLOR_PAIR(5));
+                                    mvprintw(5, 0, "YOU AREN'T INFECTED, DO YOU REALLY WANT TO USE THIS?");
+                                    mvprintw(6, 0, "ENTER y for yes, n for no. CASE SENSITIVE");
+                                    attroff(COLOR_PAIR(5));
+                                    int decision;
+                                    while(1){
+                                        decision = getch();
+                                        if(decision != 'y' && decision != 'n'){
+                                            mvprintw(0, 0, "Please Enter y, n. (y's are for yes, n's are no");
+                                        }
+                                        else{
+                                            break;
+                                        }
+                                    }
+                                    if(decision == 'y'){
+                                        dungeon->player.carrying[item_to_wear] = get_blank_item(*dungeon, 1);
+                                    }
+                                }
+                                else{
+                                    dungeon->player.is_infected = 0;
+                                    dungeon->player.carrying[item_to_wear] = get_blank_item(*dungeon, 1);
+                                    mvprintw(0, 0, "%s", spaces);
+                                    mvprintw(0, 0, "You are cured!");
                                 }
                             }
                             else{
@@ -1246,6 +1289,13 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                 else{
                     move = 'm';
                 }
+                if(!(move == 'm' || move == '?' || move == 'f' || move == 'i' || move == 'e' || move == 'I' || move == 'w' || move == 't' || move == 'd' || move == 'x' || move == ',')){
+                    dungeon->player.hp -= dungeon->player.is_infected * dungeon->player.infect_amount;
+                    if(dungeon->player.hp <= 0){
+                        dungeon->player.alive = 0;
+                        return 0;
+                    }
+                }
             }while(move == 'm' || move == '?' || move == 'f' || move == 'i' || move == 'e' || move == 'I' || move == 'w' || move == 't' || move == 'd' || move == 'x' || move == ',');
 
             dungeon->player.speed = update_speed(dungeon);
@@ -1257,7 +1307,9 @@ static int turn_decider(Dungeon *dungeon, int *init, int num_characters){
                 mvprintw(0, 0, "You can't go through walls you silly goose! Stick to the dungeon.               ");
                 continue;
             }
+            attron(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
             mvprintw(22, 60, "Move %c     ", move == KEY_UP ? 'U' : move == KEY_DOWN ? 'D' : move == KEY_RIGHT ? 'R' : move == KEY_LEFT ? 'L' : move == KEY_PPAGE ? 'P' : move == KEY_NPAGE ? 'N' : move == KEY_HOME ? 'H' : move == KEY_END ? 'E' : move);
+            attroff(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
             move_character(dungeon, *t, next_pos);
             add_cells_to_fow(dungeon);
             print_dungeon(dungeon);
@@ -1528,7 +1580,28 @@ int do_combat(Dungeon *dungeon, int mon_index, int player_attack){
     }
     else{
         dam = roll(dungeon->mons[mon_index].Damage);
-        dungeon->player.hp -= dam;
+        if(dungeon->mons[mon_index].type & INFECT) {
+            dungeon->player.is_infected = 1;
+            dungeon->player.infect_amount = dam;
+            refresh();
+            dungeon->mons[mon_index].alive = 0;
+            int is_room = find_room(dungeon, dungeon->mons[mon_index].x_pos, dungeon->mons[mon_index].y_pos);
+            dungeon->dmap[dungeon->mons[mon_index].y_pos][dungeon->mons[mon_index].x_pos] = find_stairs(dungeon, dungeon->mons[mon_index].x_pos, dungeon->mons[mon_index].y_pos,is_room == -1);
+            dungeon->player.hp -= dam;
+            clear_dungeon(dungeon);
+            clock_t timer;
+            timer = clock();
+            attron(COLOR_PAIR(GREEN));
+            mvprintw(10, 14, "You are infected. You will lose %d health every turn.", dam);
+            mvprintw(11, 14, "Find or use a vaccine to cure yourself before you die.");
+            while(((float)(clock() - timer) / CLOCKS_PER_SEC) < 7){
+                mvprintw(12, 14, "This screen will close in %f seconds   ", 7 - ((float)(clock() - timer) / CLOCKS_PER_SEC));
+                refresh();
+            }
+            attroff(COLOR_PAIR(GREEN));
+            clear_dungeon(dungeon);
+            print_dungeon(dungeon);
+        }
         dungeon->player.alive = dungeon->player.hp > 0 ? 1 : 0;
         return dungeon->player.alive;
     }
@@ -1558,7 +1631,7 @@ int is_character(Dungeon *dungeon, std::vector<Monster> mons, int next_pos[2], T
             if(dungeon->mons[i].alive && (next_pos[0] == dungeon->mons[i].y_pos && next_pos[1] == dungeon->mons[i].x_pos) && !(next_pos[0] == dungeon->mons[turn.seq - 1].y_pos && next_pos[1] == dungeon->mons[turn.seq - 1].x_pos)){ //If the next space is a monster, kill the monster
                 return i;
             }
-            else if(next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos && turn.seq){ //If it is the player, kill the player
+            else if(next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos && (dungeon->mons[i].y_pos == dungeon->mons[turn.seq - 1].y_pos && dungeon->mons[i].x_pos == dungeon->mons[turn.seq - 1].x_pos)){ //If it is the player, kill the player
                 combat = do_combat(dungeon, i, 0);
                 return combat ? -3 : -1;
             }
@@ -1656,7 +1729,6 @@ void move_character(Dungeon *dungeon, Turn turn, int next_pos[2]){
         }
         else if(dungeon->mons[turn.seq - 1].type == 4 || dungeon->mons[turn.seq - 1].type == 12 || dungeon->mons[turn.seq - 1].type & BOSS){
             while(1){
-                mvprintw(0, 0, "%s", spaces);
                 // Randomly generate a number [-1, 1] for x and y direction that the monster will move
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + ((rand() % 3) + 1) - 2;
                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + ((rand() % 3) + 1) - 2;
@@ -1994,7 +2066,47 @@ uint8_t can_be_seen(Dungeon *dungeon, Monster monster, Player player){
 
 void get_next_pos(Dungeon *dungeon, Turn turn, int next_pos[2], int telepathic, int tunneling, int smart){
     int min;
-    if(!telepathic && smart && seen(dungeon->mons[turn.seq - 1].pc_location)){
+    if(dungeon->mons[turn.seq - 1].type & INFECT){
+        min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
+        next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+        next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Up and left
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Left
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1] < min){ //Down and left
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos - 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos - 1;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos] < min){ // Down
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Down and right
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Right
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+        if(dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1] < min){ //Up and right
+            min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos + 1];
+            next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
+            next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
+        }
+    }
+    else if(!telepathic && smart && seen(dungeon->mons[turn.seq - 1].pc_location)){
         min = dungeon->mons[turn.seq - 1].distance[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
         next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
         next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
@@ -2034,8 +2146,8 @@ void get_next_pos(Dungeon *dungeon, Turn turn, int next_pos[2], int telepathic, 
             next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
         }
     }
-    else if(tunneling || (dungeon->mons[turn.seq - 1].type & INFECT)){//If the monster tunnels
-        if((telepathic && smart) || (dungeon->mons[turn.seq - 1].type & INFECT)){ //If it is also smart
+    else if(tunneling){//If the monster tunnels
+        if(telepathic && smart){ //If it is also smart
             min = dungeon->t_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos]; //Set the min from the tunneling distance map to the cell above
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
             next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
@@ -2079,7 +2191,7 @@ void get_next_pos(Dungeon *dungeon, Turn turn, int next_pos[2], int telepathic, 
              * coordinates the next position
              */
         }
-        else if(!smart && !(dungeon->mons[turn.seq - 1].type & INFECT)){ //If it can tunnel but it is not smart
+        else if(!smart){ //If it can tunnel but it is not smart
             if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0){ //Player is below
                 next_pos[0] = dungeon->mons[turn.seq - 1].y_pos + 1;
                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
@@ -2099,7 +2211,7 @@ void get_next_pos(Dungeon *dungeon, Turn turn, int next_pos[2], int telepathic, 
         }
     }
     else{ //If it does not tunnel
-        if((telepathic && smart) && !(dungeon->mons[turn.seq - 1].type & INFECT)){ //If it is smart
+        if(telepathic && smart){ //If it is smart
             //Do the same as before but with the non-tunneling distance maps
             min = dungeon->nt_distances[dungeon->mons[turn.seq - 1].y_pos - 1][dungeon->mons[turn.seq - 1].x_pos];
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos - 1;
@@ -2140,7 +2252,7 @@ void get_next_pos(Dungeon *dungeon, Turn turn, int next_pos[2], int telepathic, 
                 next_pos[1] = dungeon->mons[turn.seq - 1].x_pos + 1;
             }
         }
-        else if(!smart && !(dungeon->mons[turn.seq - 1].type & INFECT)){
+        else if(!smart){
             next_pos[1] = dungeon->mons[turn.seq - 1].x_pos;
             next_pos[0] = dungeon->mons[turn.seq - 1].y_pos;
             if(dungeon->mons[turn.seq - 1].y_pos - dungeon->player.y_pos < 0 && !dungeon->hardness[dungeon->mons[turn.seq - 1].y_pos + 1][dungeon->mons[turn.seq - 1].x_pos]){ //Player is below
@@ -2847,7 +2959,7 @@ void modified_dfs(Dungeon *dungeon, int src_x, int src_y, int dest_x, int dest_y
 int is_monster_or_item(Dungeon *dungeon, int x, int y){
     int i;
     for(i = 0; i < (int) dungeon->num_mons; i++){
-        if((x != dungeon->player.x_pos && y != dungeon->player.y_pos) && (dungeon->mons[i].alive && (x == dungeon->mons[i].x_pos && y == dungeon->mons[i].y_pos)) && (!dungeon->fow || can_be_seen(dungeon, dungeon->mons[i], dungeon->player))){
+        if(dungeon->mons[i].alive && ((x == dungeon->mons[i].x_pos && y == dungeon->mons[i].y_pos) && (!dungeon->fow || can_be_seen(dungeon, dungeon->mons[i], dungeon->player)))){
             return i;
         }
     }
@@ -2884,30 +2996,35 @@ void print_dungeon(Dungeon *dungeon){
         for (i = 0; i < MAP_X_MAX; i++) {
             int mon = is_monster_or_item(dungeon, i, j);
             if(mon == -999){
+                attron(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
                 mvaddch(j + 1, i, dungeon->fow ? dungeon->fmap[j][i] : dungeon->dmap[j][i]);//printf("%1c", dungeon[j][i]);
+                attroff(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
             }
             else{
                 if(mon >= 0){
                     int col = rand() % dungeon->mons[mon].color.size();
                     int shade = dungeon->mons[mon].color[col];
-                    attron(COLOR_PAIR(shade));
+                    attron(COLOR_PAIR(dungeon->player.is_infected ? GREEN : shade));
                     mvaddch(j + 1, i, dungeon->fow ? dungeon->fmap[j][i] : dungeon->dmap[j][i]);
-                    attroff(COLOR_PAIR(shade));
+                    attroff(COLOR_PAIR(dungeon->player.is_infected ? GREEN : shade));
                 }
                 else{
                     int shade = dungeon->items[(mon + 1) * -1].color;
-                    attron(COLOR_PAIR(shade));
+                    attron(COLOR_PAIR(dungeon->player.is_infected ? GREEN : shade));
                     mvaddch(j + 1, i, dungeon->fow ? dungeon->fmap[j][i] : dungeon->dmap[j][i]);
-                    attroff(COLOR_PAIR(shade));
+                    attroff(COLOR_PAIR(dungeon->player.is_infected ? GREEN : shade));
                 }
             }
             fputc(dungeon->dmap[j][i], dungeon->file);
         }
         fputc('\n', dungeon->file);
     }
+    attron(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
     mvprintw(j + 1, 0, "There are %d monsters, %d of which are alive      ", dungeon->num_mons, get_num_alive_monsters(dungeon));
     mvprintw(j + 2, 0, "PC Location is (%d, %d)        ", dungeon->player.x_pos, dungeon->player.y_pos);
-    mvprintw(j + 2, 24, "Health: %d    Speed %d", dungeon->player.hp, dungeon->player.speed);
+    mvprintw(j + 2, 24, "Health: %d    Speed %d   ", dungeon->player.hp, dungeon->player.speed);
+    attroff(COLOR_PAIR(dungeon->player.is_infected ? GREEN : WHITE));
+
     fputc('\n', dungeon->file);
 }
 

@@ -33,6 +33,14 @@
 #define MONSTER_TYPE 10
 #define DESC 1
 #define ESC 27
+#define WHITE 1
+#define BLUE 2
+#define GREEN 3
+#define CYAN 4
+#define RED 5
+#define MAGENTA 6
+#define YELLOW 7
+#define BLACK 8
 
 std::vector<std::string> colors = {"BLACK", "BLUE", "GREEN", "CYAN", "RED", "MAGENTA", "YELLOW", "WHITE"};
 
@@ -234,6 +242,8 @@ public:
     Item carrying[10];
     Dice damage;
     int hp;
+    int is_infected;
+    int infect_amount;
 };
 
 class Dungeon{
