@@ -1687,9 +1687,6 @@ int is_character(Dungeon *dungeon, std::vector<Monster> mons, int next_pos[2], T
                 return i;
             }
             else if(next_pos[0] == dungeon->player.y_pos && next_pos[1] == dungeon->player.x_pos && (dungeon->mons[i].y_pos == dungeon->mons[turn.seq - 1].y_pos && dungeon->mons[i].x_pos == dungeon->mons[turn.seq - 1].x_pos)){ //If it is the player, kill the player
-                mvprintw(0, 0, "%s", spaces);
-                mvprintw(0, 0, "here");
-                refresh();
                 combat = do_combat(dungeon, i, 0);
                 return combat ? -3 : -1;
             }
