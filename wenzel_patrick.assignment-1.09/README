@@ -1,0 +1,44 @@
+assignment1.01:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully prints the dungeon for the game. There are at least six rooms with a max of 15 rooms for readability. There are between 1-5 up and down staircases each which can appear in rooms and corridors. The corridors are connected to eachother by using a modified depth first search algorithm that I wrote to find the shortest path to the room you are trying to connect to. dungeon.c has all of the source code while headers.h includes all of the prototypes for the functions. The dungeon has 6-15 randomly placed rooms that measure 4-15x3-15 units. There is a border around the dungeon which is just immutable rock but is  added for readability. 
+
+assignment1.02:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully saves and loads dungeons to and from the disk. User's can access this functionality by typing ./dungeon.o or make run to randomly generate a dungeon, ./dungeon.o --save or make save to randomly generate a dungeon and save it to disk, and ./dungeon.o --load or make load to load a dungeon from disk. Users can also run ./dungeon --load --save or make ls or ./dungeon --save --load or make sl to load the file and then save that dungeon. Any other combination will throw an error to the user. This program now has types for staircases, player, and rooms with u_int8_t members for disk writing purposes. The program converts to and from 16/32 bit big endian for saving and loading.
+
+assignment1.03:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully gets the distance maps for tunneling and non-tunneling monsters. This is done by using the heap.c, heap.h, and corridor_path_cmp from the professor's solutions. I also took the professor's dijkstra_corridor and edited it so that it saves the distances for all 8 directions that monsters could move. I also edited it so that it works for both tunneling and non-tunneling monsters by checking if it is a tunneling monster when adding nodes into the heap. You can run ./dungeon.o or make run, ./dungeon.o --save or make save, and ./dungeon.o --load or make load,./dungeon --load --save, or make ls or ./dungeon --save --load or make sl to perform the functions above in assignment1.02 for these commands and then also print out the distance maps. For unconnected dungeons, open space that is not connected will be represented by an 'X'.
+
+assignment1.04:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully implements movement for four types of monsters. Two monsters tunnel and the other two do not. This program either randomly generates monsters or also takes in optional user input for the number of monsters. Check the CHANGELOG for usage of manually setting the number of monsters. I used the professor's heap and my own comparator for deciding whose turn it is and bases it's move by it's characteristics, unless it is erratic. The game will end if all monsters die or if the player dies (which is most likely since the player does not move). Characters die if another character moves on top of it.
+
+assignment1.05:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program succesfully allows the player to move around. The player can also hit 'm' to display the list of monsters or '?' to display a list of all valid commands and their rules. The player is allowed to kill monsters and will win if they are alive and all the monsters are dead. The player can go utilize staircases which will generate new dungeons and the dungeons are not connected. Players get information printed above and below the dungeon map. After the game, players can look at output.txt to see the dungeon after each print.
+
+assignment1.06:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program succesfully implements the fog of war map and the teleportation ability for the player. When the fog of war map is displayed, the user can only see in a 5x5 square and any places they have visited (but only how they remember it). Monsters only appear if they are in the 5x5 block. The user can toggle the fow map on or off with the 'f' key. When toggled, the user can see the whole dungeon. When the user presses 'g', they can either teleport to a random location by pressing 'r' or choose a spot to teleport to using the arrow, home, end, PgUp, and PgDn keys. If the user quits the game, they will get a kind message saying that quitting is lame.
+
+assignment1.07:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully parses the monster_desc.txt file and creates a vector of monsters with the attributes given in the file. The game is not played and the item parser is not done either. When you run the program, the output will be each of the monsters and their attributes.
+
+assignment1.08:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program succesfully for the most part adds monsters and items to the map and displays them using colors. If a monster has more than one color it chooses a random color each turn to display. Monsters and the player can walk over items but cannot pick them up. I am having an issue where if a monster or item is inline with the player, the color won't display and I can't figure out why that is happening. It is happening in my is_monster_or_item() function I do know that.
+
+assignment1.09:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully implements item usage and combat. The player can see now at the bottom how much health and speed they have and when they are combating with the monster, the monster's health, damage done, and health left are displayed at the top. To combat, just run into the monster. The player can pick up items, wear them (which updates their speed), take them off (which also updates their speed), drop, and can delete them from the dungeon. Dice rolls now work properly too. Players can list their carry inventory, equipped inventory, inspect an item, and inspect monsters. Please look at CHANGELOG for directions on how to do these commands. The program also double checks with the user when they're expunging an item.

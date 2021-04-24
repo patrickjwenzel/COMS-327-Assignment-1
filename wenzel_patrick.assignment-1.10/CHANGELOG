@@ -1,0 +1,187 @@
+04-22-2021:
+    - PJW fixed issue where colors wouldn't print for monster's and item's when the player was inline with them. Not sure why the code caused an issue since it was checking if the x and y of the monster or item equalled the x and y of the player not if either one of them matched.
+    - PJW added to do_combat to handle the Virtual Semester infecting the player, making the map green and taking damage from the player each time. This can also happen with a 50% chance when the user kills this monster. A message shows for 7 seconds letting the player know what happend when they get infected.
+    - PJW added is_infected, infect_amount, immune, immune_count, and turns_immune to the Player class to accomodate for the Holiday Break Vaccine, and the Motivation Potion.
+    - PJW implemented the functionality of the vaccine and the potion in turn_decider when a user wears an object. The user also has to verify they want to use these objects in case they use it on accident.
+
+04-21-2021:
+    - PJW added INFECT ability for monsters
+    - PJW added to get_next_pos() and move_character() to handle the Virtual Semester which also implemented the PASS ability (but only for this monster)
+
+04-16-2021:
+    - PJW added descriptions for the Virtual Semester, the Holiday Break Vaccine, and the Motivation Potion into monster_desc.txt and object_desc.txt
+
+04-15-2021:
+    - PJW wrote update_speed() to update the player's speed whenever they take off or wear an item
+    - PJW wrote do_combat which handles when a player attacks a monster and vice versa
+    - PJW wrote get_damage() which gets the total damage by rolling the player's dice for equipment slots and adding those values up. Only rolls the monster's damage dice
+    - PJW wrote roll() which rolls the dice correctly
+    - PJW added control for expunging an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The user is then prompted asking if they are sure they want to expunge this item and if so, the item is deleted from the game. Otherwise, returns to the game.
+    - PJW added control for looking at a monster where they can move a cursor, select a monster, and its description is displayed.
+    - PJW added functionality where monsters can't kill each other, they only swap positions.
+    - Controls:
+        - w is to wear an item
+        - t is to take off an item
+        - d is to drop an item
+        - x is to expunge an item
+        - i is to list the PC carrying inventory
+        - e is to list the PC equipped inventory
+        - I is to inspect an item
+        - L is to select a monster
+            - Press t to select monster you want to learn about
+    - Unsolvable bugs:
+        - Monsters and items that are inline with the PC at any point on the map (straight left, right, up, or down), only display white and not their color
+        - Sometimes LIGHT items will be picked up and placed in inventory, but you can still see the item on the map and pick it up and then weird symbols appear in the inventory list
+
+04-14-2021:
+    - PJW wrote get_equip_index() to get the index of the equipped inventory when the user enters a letter for which slot they are choosing
+    - PJW added control for wearing an item where the carrying inventory is displayed, takes the user's input and checks if the equipment slot is valid and empty. The user will wear the selected item anyway but if there is already an item of that type there already, it will swap the two items
+    - PJW added control for taking off an item where the equipped inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. If there is an open carry slot, the user will take off the item. Otherwise, nothing happens
+    - PJW added control for dropping an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The item will then be dropped onto a neighboring open cell (does not have a monster, stair, or item in its space)
+    - PJW added control for inspecting an item where the carrying inventory is displayed, takes the user's input, check's if the equipment slot is valid and not empty. The menu will then disappear and the item's description is displayed.
+
+04-13-2021:
+    - PJW added a carrying inventory, equipped inventory, damage dice, and hp to the player
+    - PJW wrote print_inventory() to print the player's carrying inventory and let's them escape by hitting any key
+    - PJW wrote get_blank_item() to return a blank item to the user's carry or equipment slot
+    - PJW wrote print_equipped() to print the player's carrying inventory and let's them escape by hitting any key
+    - PJW added controls for printing the carrying and equipped inventories to turn_decider
+
+04-06-2021:
+    - PJW Changed monster and turn array into a vector due to issues with bad_allocs (works fine now)
+    - PJW wrote is_monster_or_item() to tell if the coordinate printing is an item or a monster
+    - PJW wrote create_items() to create the item objects and store them in a vector
+    - PJW wrote item_visible() to tell if an item is within the player's eyesight
+    - PJW wrote place_items() to place the items in the map
+    - PJW wrote is_item() to tell if the coordinate is an item
+    - PJW adde gdb commands to the makefile
+
+04-05-2021:
+    - PJW Added parser for item descriptions
+    - PJW Added Item class
+    - PJW Wrote reset_item to reset items
+    
+04-01-2021:
+    - PJW Added BOSS parse
+
+03-31-2021:
+    - PJW Wrote print_descriptions() which reads in the text file and parses through it while creating Monster class objects and adding that to the monster list
+    - PJW Added to the Monster class to have attributes for its name, description, color, speed, abilities, hitpoints, attack damage, symbol, and rarity
+    - PJW Created the Dice class to handle dice rolls in the next assignment.
+    - PJW Wrote Monster::print_monster() to print the monster's information
+    - PJW Wrote reset_monster() to set the monster's values before parsing.
+
+03-25-2021:
+    - PJW Fixed error happening when generating new dungeons
+    - PJW Fixed bug where the fow map would keep the @ for a player's previous location after teleporting
+    - PJW Fixed bug where the player would leave behind a # in rock after teleporting
+    - PJW Added ASCII text for when a player quits the game
+
+03-24-2021:
+    - PJW Ported all code to c++
+    - PJW Changed structs into classes
+    - PJW Wrote is_open() to make sure a space was open to teleport onto
+    - PJW Wrote teleport() to handle moving the cursor around for teleporting. Added functionality in turn_decider if the user chose to teleport to a random location. Use g to start the teleport action, press r to teleport randomly, press the arrow keys to move around the cursor
+    - PJW Wrote add_cells_to_fow() to add cells within range to the fog of war map
+    - PJW Added the fow map to the dungeon which displays blocks in the 5x5 radius of the player and anything it has remembered seeing. This map can be toggled on and off with f
+    - PJW Found bugs when generating new dungeons
+        - Happened because the word malloc was missing when mallocing for the up_stairs array
+        - Still has an error when there's only 1 monster
+    - PJW Added make debug to run the program with valgrind to the makefile
+
+03-10-2021:
+    - PJW Fixed move_character() to correctly handle the player moving.
+    - PJW Fixed bug where the player couldn't kill any monsters
+    - PJW Wrote delete_dungeon() which successfully frees malloced memory and generates a new dungeon
+    - PJW Fixed bug where if there were exactly 22 monsters the monster list would not display the 22nd monster.
+    - PJW Fixed dungeon.num_mons_alive bug where it wouldn't update correctly by writing get_num_alive_monsters() which counts the number of alive monsters and returns it.
+    - PJW Added feature to write dungeon after each print so that players can see after the game what the dungeon was like.
+
+03-09-2021:
+    - PJW Converted the program to use nscurses
+    - PJW Added to turn_decider() to handle input from user, displaying to them if their input was incorrect.
+    - PJW Wrote display_monsters() to display to the users the list of monsters and their location relative to the player
+    - PJW Wrote print_help() to print to the user the different commands they can use and the rules they may or may not have.
+    - PJW Wrote clear_dungeon() to clear the window for displaying the monster and help list.
+    - PJW Added to move_character() to handle how to move the player
+        - Got segmentation faults
+
+03-03-2021:
+    - PJW Completed turn_decider() to successfully determine whose next turn it is.
+    - PJW Wrote move() which determines where the monster will move depending on what type it is.
+    - PJW Wrote get_next_post() to determine what next position the monster will move to which can be overwritten if the monster is erratic (decided in move())
+    - PJW Wrote is_character() to determine if there is a monster or the player in the next position that the monster will move to. If it is, kill that character.
+    - PJW Noticed a bug where killing monsters wasn't handled correctly and the dead monsters were still in the heap. This was also caused by the monsters new positions not being updated.
+    - PJW Added the --nummon switch
+        - Works with the following commands (where # is an integer of the number of monsters you want to generate):
+            - make monster NUMMON=#
+            - make lsn NUMMON=#
+            - make lns NUMMON=#
+            - make sln NUMMON=#
+            - make snl NUMMON=#
+            - make nsl NUMMON=#
+            - make nls NUMMON=#
+    - PJW Added functionality for 3, 7, b, and f monsters only. Will add rest for next assignment.
+
+03-02-2021:
+    - PJW Created a dungeon type and converted all existing functions to work with this type.
+    - PJW Created a turn type for the turn priority queue
+    - Created a monster type and added a speed and alive variables to the player type
+    - Wrote the turn_cmp comparator which checks two turn type nodes' next_turns and if those are the same, then return the comparison of their seq's
+    - Wrote create_monsters() which creates a monster for the number of monsters and it's characteristics are randomly determined by taking rand() & 0x0000000f.
+    - Wrote place_monsters() which places monsters in the dungeon. Non-tunneling monsters are generated only in rooms or corridors and tunneling monsters are generated anywhere.
+    - Started writing turn_decider() which creates the heap for the priority queue.
+
+02-24-2021:
+    - PJW Fixed dijkstra_map so that the non-tunneling monster's distances save correctly
+    - PJW Edited dijkstra_map so that it also works for tunneling monsters so that I didn't have to write two algorithms
+    - PJW Edited print_map so that it prints for tunneling and non-tunneling monsters
+    - PJW Edited main so that you can load in saved maps, save maps, and print their distance maps.
+    - PJW Fixed print_map so that for open space that is not connected to the player an 'X' will be printed.
+
+02-23-2021:
+    - PJW Added heap.c, heap.h, and corridor_path_cmp from professor's solutions
+    - PJW Started writing dijkstra_map to work for non-tunneling monsters
+    - PJW Wrote print_map to print out the distance map
+    - PJW Ran into issue where the distances were all 0
+
+02-18-2021:
+    - PJW Fixed create_dungeon_map(), save_game(), and load_game() to be able to correctly account for running --save --load or --load --save
+    - PJW Fixed arg handling in main function to allow for --save --load or --load --save
+
+02-17-2021:
+    - PJW Started to write save game function
+    - PJW Wrote save_game() to write data from the dungeon to the disk
+    - PJW Made number of up and downstairs into a two element int array and counted them that way so that when passed through functions their values would actually update
+    - PJW Ran into bug where everything but the hardness array would write correctly
+        - PJW Fixed by changing fwrite(&hardness...) to fwrite(hardness)
+    - PJW Added functionality to take in load, save, or just generate parameters from the user and will warn the user if their input is incorrect
+
+02-16-2021:
+    - PJW Created types for rooms, player, and up and down staircases
+    - PJW Made certain things u_int8_t that could be that type like positions, sizes, and hardness
+    - PJW Wrote the load_game() function to load in the binary file
+    - PJW Wrote find_room() to check if the x and y positions were located inside of a room
+    - PJW Wrote find_stairs() To check if the x and y positions were an up or down staircase
+    - PJW Wrote make_dungeon() To create the dungeon from the data in load_game(). Places the character, rooms, corridors, and stairs correctly
+    - PJW Ran into bug where anything of hardness 0 was printing as a corridor
+        - PJW Fixed this by checking all bounds of the room and not just the original x y position
+    - PJW Added load and save functionality to the Makefile
+
+02-15-2021:
+    - PJW Created protoypes for load and save functions
+
+02-11-2021:
+    - PJW Created headers.h to clean up code
+    - PJW Added to create_dungeon_map() to place staircases and start the corridor placing process
+    - PJW Wrote shortest_path() to initialize the visited array and to start the corridor placing process
+    - PJW Wrote modified_DFS() to perform a modified depth first search to get from the origin room to the next room
+        - Performs a depth first search in the left and right direction while performing checks each time the function is called
+        - If room is straight up or down, just place corridors
+
+02-10-2021:
+    - PJW Wrote fill_dungeon() to fill the char array with *'s to know where non-dungeon places are
+    - PJW Wrote part of create_dungeon_map() to correctly place at least 6 rooms that are at least 4x3
+    - PJW Wrote print_dungeon() to print dungeon that also includes a border
+    - PJW Wrote newRoom() to create a new room struct and return that struct
+    - PJW Wrote is_room() to check if rooms would collide

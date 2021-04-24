@@ -1,0 +1,19 @@
+assignment1.01:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully prints the dungeon for the game. There are at least six rooms with a max of 15 rooms for readability. There are between 1-5 up and down staircases each which can appear in rooms and corridors. The corridors are connected to eachother by using a modified depth first search algorithm that I wrote to find the shortest path to the room you are trying to connect to. dungeon.c has all of the source code while headers.h includes all of the prototypes for the functions. The dungeon has 6-15 randomly placed rooms that measure 4-15x3-15 units. There is a border around the dungeon which is just immutable rock but is  added for readability. 
+
+assignment1.02:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully saves and loads dungeons to and from the disk. User's can access this functionality by typing ./dungeon.o or make run to randomly generate a dungeon, ./dungeon.o --save or make save to randomly generate a dungeon and save it to disk, and ./dungeon.o --load or make load to load a dungeon from disk. Users can also run ./dungeon --load --save or make ls or ./dungeon --save --load or make sl to load the file and then save that dungeon. Any other combination will throw an error to the user. This program now has types for staircases, player, and rooms with u_int8_t members for disk writing purposes. The program converts to and from 16/32 bit big endian for saving and loading.
+
+assignment1.03:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully gets the distance maps for tunneling and non-tunneling monsters. This is done by using the heap.c, heap.h, and corridor_path_cmp from the professor's solutions. I also took the professor's dijkstra_corridor and edited it so that it saves the distances for all 8 directions that monsters could move. I also edited it so that it works for both tunneling and non-tunneling monsters by checking if it is a tunneling monster when adding nodes into the heap. You can run ./dungeon.o or make run, ./dungeon.o --save or make save, and ./dungeon.o --load or make load,./dungeon --load --save, or make ls or ./dungeon --save --load or make sl to perform the functions above in assignment1.02 for these commands and then also print out the distance maps. For unconnected dungeons, open space that is not connected will be represented by an 'X'.
+
+assignment1.04:
+Patrick Wenzel pwenzel@iastate.edu
+
+This program successfully implements movement for four types of monsters. Two monsters tunnel and the other two do not. This program either randomly generates monsters or also takes in optional user input for the number of monsters. Check the CHANGELOG for usage of manually setting the number of monsters. I used the professor's heap and my own comparator for deciding whose turn it is and bases it's move by it's characteristics, unless it is erratic. The game will end if all monsters die or if the player dies (which is most likely since the player does not move). Characters die if another character moves on top of it.
