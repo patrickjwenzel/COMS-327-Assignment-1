@@ -2459,7 +2459,7 @@ void create_monsters(Dungeon *dungeon){
     for(i = 0; i < int (dungeon->num_mons); i++){
         placed = 0;
         while(!placed){
-            rand_num = rand() % dungeon->descriptions.monster_list.size();
+            rand_num = 20;// rand() % dungeon->descriptions.monster_list.size();
             Monster m = dungeon->descriptions.monster_list[rand_num];
             m.type = m.abil;
             if(m.type & UNIQ){

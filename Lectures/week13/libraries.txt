@@ -1,0 +1,26 @@
+* Programming (with) libraries
+** Examining binaries to see what libraries they require: ldd
+** Linking static binaries, which require no libraries to run: use -static
+** Static libraries
+   A static library puts required code in your binary, so the library is not
+   needed at runtime.  To create one:
+     1) Partial compile as usual
+     2) Build static library with: 
+          ar -cvq lib<name>.a <file1>.o <file2>.o ... <filen>.o
+   You can examine archive (static library) contents with: ar -t
+   Static libraries are really just 1 or more object files concatenated together
+** Dynamic libraries
+   Dynamic libraries are loaded at runtime, and (usually) only functionality
+   you actually use is pulled into the binary on demand.
+   Good for code size.  Operating system/dynamic loader can have exactly one
+   loaded instance of, e.g., libc on the entire system!
+   Have to do partial compiles with -fPIC
+   Then create library with:
+     gcc -shared -Wl,-soname,lib<name>.so -o lib<name>.so <file1.o> ...
+   Some libraries require initialization (and maybe deinit) before use.  In
+     GNU C, use __attribute__((constructor)) and __attribute__((destructor))
+     to signify functions that run at load or unload time
+** Using the dynamic linking loader in your program
+   void *dlopen(const char *filename, int flag) opens a shared library
+   void *dlsym(void *handle, const char *symbol) reads a symbol from handle
+   int dlclose(void *handle) closes the library when you are done
